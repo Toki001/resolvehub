@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { parseEmbeddingConfiguration } from '@resolvehub/db';
 
 const schema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -20,5 +21,6 @@ export function parseApiEnv(input: NodeJS.ProcessEnv): ApiEnv {
     const fields = [...new Set(result.error.issues.map((issue) => issue.path.join('.')))];
     throw new Error(`Invalid API environment: ${fields.join(', ')}`);
   }
+  parseEmbeddingConfiguration(input);
   return result.data;
 }

@@ -1,4 +1,4 @@
-.PHONY: setup install dev build start check generate up down migrate smoke integration e2e
+.PHONY: setup install dev build start check generate up down migrate seed bootstrap smoke integration e2e
 
 setup:
 	pnpm env:setup
@@ -39,3 +39,9 @@ integration:
 
 e2e:
 	pnpm test:e2e
+
+seed:
+	pnpm db:seed
+
+bootstrap:
+	pnpm db:bootstrap --database resolvehub_synthetic --seed

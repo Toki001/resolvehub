@@ -28,6 +28,6 @@ API/worker readiness returns HTTP 200 with `status: ready`, or 503 with `status:
 
 Ctrl+C stops application processes and closes database/Redis/worker resources. `docker compose down` stops containers and preserves data. `docker compose down --volumes` is destructive and is never part of normal setup or verification.
 
-Run numbered contract API migrations with `pnpm db:migrate`. The runner verifies applied checksums and safely skips repeated application. API readiness requires the current contract migration. The PostgreSQL extension bootstrap remains infrastructure setup. Complete schema/publication/fixture work is reserved for the data milestone; MinIO bucket/upload authorization remains future work.
+Run numbered application migrations with `pnpm db:migrate`. The runner verifies applied checksums and safely skips repeated application. API readiness requires the latest migration and configured embedding model/dimension. See [database operations](database.md) for clean bootstrap, the synthetic seed, runtime roles, publication rules and rollback. MinIO bucket/upload authorization remains future work.
 
 The workflow checks contracts, generated drift, code, builds, migrations and real HTTP integration on GitHub; it does not publish images, deploy a site, or exercise future milestones. Remote GitHub Actions execution must be verified after pushing to a repository.

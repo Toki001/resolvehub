@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
+import { TenantConnection } from './tenant.js';
 
 export interface Actor {
   organizationId: string;
@@ -32,7 +33,7 @@ export class StoreConflict extends Error {
 const ticketJson = `jsonb_build_object('id',t.id,'subject',t.subject,'customerEmail',t.customer_email,
   'status',t.status,'createdAt',t.created_at,'updatedAt',t.updated_at)`;
 const draftJson = `jsonb_build_object('id',d.id,'ticketId',d.ticket_id,'text',d.text,'status',d.status,
-  'revision',d.revision,'citations',d.citations,'evidenceValidated',d.evidence_validated,
+  'revision',d.revision,'citations',(SELECT coalesce(jsonb_agg(jsonb_build_object('documentId',e.document_id,'versionId',e.version_id,'chunkId',e.chunk_id) ORDER BY e.position),'[]'::jsonb) FROM citations e WHERE e.organization_id=d.organization_id AND e.draft_id=d.id),'evidenceValidated',d.evidence_validated,
   'model',d.model,'promptVersion',d.prompt_version,'reviewedBy',d.reviewed_by,
   'reviewedAt',d.reviewed_at,'reviewReason',d.review_reason,'createdAt',d.created_at)`;
 const jobJson = `jsonb_build_object('id',j.id,'kind',j.kind,'status',j.status,'resourceId',j.resource_id,
@@ -46,20 +47,32 @@ export class ContractStore {
   }
 
   async authenticate(tokenHash: string): Promise<unknown> {
-    const result = await this.pool.query<{ data: unknown }>(
+    const credential = await this.pool.query<{ organization_id: string }>(
+      'SELECT organization_id FROM api_credentials WHERE token_hash=$1 AND revoked_at IS NULL AND expires_at>now()',
+      [tokenHash],
+    );
+    if (!credential.rows[0]) return undefined;
+    const connection = new TenantConnection(this.pool, credential.rows[0].organization_id);
+    const result = await connection.query<{ data: unknown }>(
       `SELECT jsonb_build_object('organizationId',m.organization_id,'membershipId',m.id,
        'subject',m.subject,'role',m.role) AS data FROM api_credentials a
        JOIN memberships m ON m.id=a.membership_id AND m.organization_id=a.organization_id
-       WHERE a.token_hash=$1 AND a.revoked_at IS NULL AND a.expires_at>now() AND m.active`,
-      [tokenHash],
+       WHERE a.token_hash=$1 AND m.organization_id=$2 AND a.revoked_at IS NULL AND a.expires_at>now() AND m.active AND m.deleted_at IS NULL AND EXISTS (SELECT 1 FROM organizations o WHERE o.id=m.organization_id AND o.deleted_at IS NULL)`,
+      [tokenHash, credential.rows[0].organization_id],
     );
     return result.rows[0]?.data;
   }
 
   async integration(id: string): Promise<unknown> {
-    const result = await this.pool.query<{ data: unknown }>(
+    const integration = await this.pool.query<{ organization_id: string }>(
+      'SELECT organization_id FROM webhook_integrations WHERE id=$1 AND active AND deleted_at IS NULL',
+      [id],
+    );
+    if (!integration.rows[0]) return undefined;
+    const connection = new TenantConnection(this.pool, integration.rows[0].organization_id);
+    const result = await connection.query<{ data: unknown }>(
       `SELECT jsonb_build_object('id',id,'organizationId',organization_id,'encryptedSecret',encrypted_secret)
-       AS data FROM webhook_integrations WHERE id=$1 AND active`,
+       AS data FROM webhook_integrations WHERE id=$1 AND active AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM organizations o WHERE o.id=organization_id AND o.deleted_at IS NULL)`,
       [id],
     );
     return result.rows[0]?.data;
@@ -75,6 +88,9 @@ export class ContractStore {
     const client = await this.pool.connect();
     try {
       await client.query('BEGIN');
+      await client.query("SELECT set_config('resolvehub.organization_id',$1,true)", [
+        actor.organizationId,
+      ]);
       // The unique insert waits for a concurrent first writer; its row lock then
       // serializes replay/conflict handling with the same business transaction.
       await client.query(
@@ -118,13 +134,22 @@ export class ContractStore {
 
 export class TenantRepository {
   constructor(
-    private readonly connection: pg.Pool | pg.PoolClient,
+    connection: pg.Pool | pg.PoolClient,
     private readonly organizationId: string,
-  ) {}
+  ) {
+    this.connection =
+      'totalCount' in connection ? new TenantConnection(connection, organizationId) : connection;
+  }
+  private readonly connection: {
+    query<T extends pg.QueryResultRow = pg.QueryResultRow>(
+      text: string,
+      values?: unknown[],
+    ): Promise<pg.QueryResult<T>>;
+  };
 
   async ticket(id: string): Promise<unknown> {
     const result = await this.connection.query<{ data: unknown }>(
-      `SELECT ${ticketJson} AS data FROM tickets t WHERE t.organization_id=$1 AND t.id=$2`,
+      `SELECT ${ticketJson} AS data FROM tickets t WHERE t.organization_id=$1 AND t.id=$2 AND t.deleted_at IS NULL`,
       [this.organizationId, id],
     );
     return result.rows[0]?.data;
@@ -132,7 +157,7 @@ export class TenantRepository {
 
   async tickets(page: PageWindow, filter: TicketFilter): Promise<unknown[]> {
     const result = await this.connection.query<{ data: unknown }>(
-      `SELECT ${ticketJson} AS data FROM tickets t WHERE t.organization_id=$1
+      `SELECT ${ticketJson} AS data FROM tickets t WHERE t.organization_id=$1 AND t.deleted_at IS NULL
        AND t.created_at<=$2::timestamptz AND ($3::timestamptz IS NULL OR (t.created_at,t.id)<($3::timestamptz,$4::uuid))
        AND ($5::text IS NULL OR t.status=$5) AND ($6::text IS NULL OR strpos(lower(t.subject),lower($6))>0)
        ORDER BY t.created_at DESC,t.id DESC LIMIT $7`,
@@ -170,7 +195,7 @@ export class TenantRepository {
   async messages(ticketId: string): Promise<unknown[]> {
     const result = await this.connection.query<{ data: unknown }>(
       `SELECT jsonb_build_object('id',id,'body',body,'author',author,'createdAt',created_at) AS data
-       FROM ticket_messages WHERE organization_id=$1 AND ticket_id=$2 ORDER BY created_at,id LIMIT 100`,
+       FROM ticket_messages WHERE organization_id=$1 AND ticket_id=$2 AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM tickets t WHERE t.organization_id=$1 AND t.id=$2 AND t.deleted_at IS NULL) ORDER BY created_at,id LIMIT 100`,
       [this.organizationId, ticketId],
     );
     return result.rows.map((row) => row.data);
@@ -178,7 +203,7 @@ export class TenantRepository {
 
   async draft(id: string, lock = false): Promise<unknown> {
     const result = await this.connection.query<{ data: unknown }>(
-      `SELECT ${draftJson} AS data FROM draft_responses d WHERE d.organization_id=$1 AND d.id=$2 ${lock ? 'FOR UPDATE' : ''}`,
+      `SELECT ${draftJson} AS data FROM draft_responses d WHERE d.organization_id=$1 AND d.id=$2 AND d.deleted_at IS NULL AND EXISTS (SELECT 1 FROM tickets t WHERE t.organization_id=d.organization_id AND t.id=d.ticket_id AND t.deleted_at IS NULL) ${lock ? 'FOR UPDATE' : ''}`,
       [this.organizationId, id],
     );
     return result.rows[0]?.data;
@@ -186,7 +211,7 @@ export class TenantRepository {
 
   async drafts(ticketId: string): Promise<unknown[]> {
     const result = await this.connection.query<{ data: unknown }>(
-      `SELECT ${draftJson} AS data FROM draft_responses d WHERE d.organization_id=$1 AND d.ticket_id=$2
+      `SELECT ${draftJson} AS data FROM draft_responses d WHERE d.organization_id=$1 AND d.ticket_id=$2 AND d.deleted_at IS NULL AND EXISTS (SELECT 1 FROM tickets t WHERE t.organization_id=d.organization_id AND t.id=d.ticket_id AND t.deleted_at IS NULL)
        ORDER BY d.created_at DESC,d.id DESC LIMIT 100`,
       [this.organizationId, ticketId],
     );
@@ -216,7 +241,8 @@ export class TenantRepository {
       `SELECT c.id FROM knowledge_chunks c JOIN knowledge_documents d ON d.organization_id=c.organization_id
        AND d.id=c.document_id AND d.active_version_id=c.version_id
        WHERE c.organization_id=$1 AND c.id=$2 AND c.document_id=$3 AND c.version_id=$4
-       AND d.status='indexed' FOR SHARE OF c,d`,
+       AND d.status='indexed' AND d.deleted_at IS NULL AND c.deleted_at IS NULL
+       AND EXISTS (SELECT 1 FROM document_versions v WHERE v.organization_id=c.organization_id AND v.id=c.version_id AND v.status='indexed' AND v.deleted_at IS NULL) FOR SHARE OF c,d`,
       [this.organizationId, citation.chunkId, citation.documentId, citation.versionId],
     );
     return result.rowCount === 1;
@@ -316,7 +342,7 @@ export class TenantRepository {
   async documents(page: PageWindow): Promise<unknown[]> {
     const result = await this.connection.query<{ data: unknown }>(
       `SELECT jsonb_build_object('id',id,'title',title,'status',status,'activeVersionId',active_version_id,'createdAt',created_at) AS data
-       FROM knowledge_documents WHERE organization_id=$1 AND created_at<=$2::timestamptz
+       FROM knowledge_documents WHERE organization_id=$1 AND deleted_at IS NULL AND created_at<=$2::timestamptz
        AND ($3::timestamptz IS NULL OR (created_at,id)<($3::timestamptz,$4::uuid))
        ORDER BY created_at DESC,id DESC LIMIT $5`,
       [
@@ -336,7 +362,8 @@ export class TenantRepository {
         'title',d.title,'excerpt',substring(c.text,1,400),'createdAt',c.created_at) AS data
        FROM knowledge_chunks c JOIN knowledge_documents d ON d.organization_id=c.organization_id
         AND d.id=c.document_id AND d.active_version_id=c.version_id
-       WHERE c.organization_id=$1 AND d.status='indexed' AND strpos(lower(c.text),lower($2))>0
+       WHERE c.organization_id=$1 AND d.status='indexed' AND d.deleted_at IS NULL AND c.deleted_at IS NULL
+        AND EXISTS (SELECT 1 FROM document_versions v WHERE v.organization_id=c.organization_id AND v.id=c.version_id AND v.status='indexed' AND v.deleted_at IS NULL) AND strpos(lower(c.text),lower($2))>0
         AND c.created_at<=$3::timestamptz AND ($4::timestamptz IS NULL OR (c.created_at,c.id)<($4::timestamptz,$5::uuid))
        ORDER BY c.created_at DESC,c.id DESC LIMIT $6`,
       [
@@ -354,11 +381,11 @@ export class TenantRepository {
   async summary(): Promise<unknown> {
     const result = await this.connection.query<{ data: unknown }>(
       `SELECT jsonb_build_object(
-       'openTickets',(SELECT count(*)::int FROM tickets WHERE organization_id=$1 AND status='open'),
-       'pendingTickets',(SELECT count(*)::int FROM tickets WHERE organization_id=$1 AND status='pending'),
-       'resolvedTickets',(SELECT count(*)::int FROM tickets WHERE organization_id=$1 AND status='resolved'),
-       'publishedDocuments',(SELECT count(*)::int FROM knowledge_documents WHERE organization_id=$1 AND status='indexed' AND active_version_id IS NOT NULL),
-       'pendingReviews',(SELECT count(*)::int FROM draft_responses WHERE organization_id=$1 AND status='pending'),
+       'openTickets',(SELECT count(*)::int FROM tickets WHERE organization_id=$1 AND deleted_at IS NULL AND status='open'),
+       'pendingTickets',(SELECT count(*)::int FROM tickets WHERE organization_id=$1 AND deleted_at IS NULL AND status='pending'),
+       'resolvedTickets',(SELECT count(*)::int FROM tickets WHERE organization_id=$1 AND deleted_at IS NULL AND status='resolved'),
+       'publishedDocuments',(SELECT count(*)::int FROM knowledge_documents d WHERE organization_id=$1 AND deleted_at IS NULL AND status='indexed' AND EXISTS (SELECT 1 FROM document_versions v WHERE v.organization_id=d.organization_id AND v.id=d.active_version_id AND v.status='indexed' AND v.deleted_at IS NULL)),
+       'pendingReviews',(SELECT count(*)::int FROM draft_responses WHERE organization_id=$1 AND deleted_at IS NULL AND status='pending'),
        'acceptedJobs',(SELECT count(*)::int FROM job_runs WHERE organization_id=$1 AND status='accepted'),
        'failedJobs',(SELECT count(*)::int FROM job_runs WHERE organization_id=$1 AND status='failed')) AS data`,
       [this.organizationId],

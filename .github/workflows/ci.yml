@@ -36,6 +36,8 @@ jobs:
       - run: pnpm infra:up
       - run: pnpm db:migrate
       - run: pnpm db:migrate
+      - name: Verify clean database bootstrap with synthetic fixtures
+        run: pnpm db:bootstrap --database resolvehub_bootstrap_ci --seed
       - name: Start compiled applications
         run: pnpm start > /tmp/resolvehub-start.log 2>&1 &
       - name: Wait for service readiness

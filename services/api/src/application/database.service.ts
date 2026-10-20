@@ -6,7 +6,7 @@ import type { ApiEnv } from '../env.js';
 
 @Injectable()
 export class DatabaseService implements OnModuleDestroy {
-  readonly database;
+  readonly database: ReturnType<typeof createDatabase>;
   readonly store;
   constructor(@Inject(API_ENV) env: ApiEnv) {
     this.database = createDatabase(env.DATABASE_URL);

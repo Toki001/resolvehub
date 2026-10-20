@@ -5,7 +5,7 @@ import { Redis } from 'ioredis';
 import { API_ENV } from './env.js';
 import type { ApiEnv } from './env.js';
 import { DatabaseService } from './application/database.service.js';
-import { CONTRACT_MIGRATION } from '@resolvehub/db';
+import { CONTRACT_MIGRATION, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from '@resolvehub/db';
 
 @Injectable()
 export class HealthService implements OnModuleDestroy {
@@ -31,8 +31,8 @@ export class HealthService implements OnModuleDestroy {
     const results = await Promise.allSettled([
       this.database.pool
         .query(
-          "SELECT extversion FROM pg_extension WHERE extname = 'vector' AND EXISTS (SELECT 1 FROM schema_migrations WHERE name=$1)",
-          [CONTRACT_MIGRATION],
+          "SELECT extversion FROM pg_extension WHERE extname = 'vector' AND EXISTS (SELECT 1 FROM schema_migrations WHERE name=$1) AND EXISTS (SELECT 1 FROM embedding_configuration WHERE model=$2 AND dimensions=$3)",
+          [CONTRACT_MIGRATION, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS],
         )
         .then((result) => {
           if (result.rowCount !== 1) throw new Error('Required extension unavailable');

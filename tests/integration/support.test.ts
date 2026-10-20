@@ -77,6 +77,10 @@ async function published(
     [chunkId, org, documentId, versionId, text],
   );
   await pool.query(
+    "UPDATE document_versions SET status='indexed' WHERE organization_id=$1 AND document_id=$2 AND id=$3",
+    [org, documentId, versionId],
+  );
+  await pool.query(
     'UPDATE knowledge_documents SET active_version_id=$3 WHERE organization_id=$1 AND id=$2',
     [org, documentId, versionId],
   );
