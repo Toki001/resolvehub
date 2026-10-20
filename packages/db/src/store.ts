@@ -25,7 +25,7 @@ const receiptSchema = z.object({
 });
 export type MutationReceipt = z.infer<typeof receiptSchema>;
 export class StoreConflict extends Error {
-  constructor(readonly kind: 'idempotency' | 'state' | 'not_found' | 'evidence') {
+  constructor(readonly kind: 'idempotency' | 'state' | 'not_found' | 'evidence' | 'capacity') {
     super(kind);
   }
 }
@@ -248,19 +248,45 @@ export class TenantRepository {
     return result.rowCount === 1;
   }
 
-  async createIngestion(input: {
-    title: string;
-    objectKey: string;
-    mediaType: string;
-    sizeBytes: number;
-    sha256: string;
-  }) {
-    const documentId = randomUUID();
-    const versionId = randomUUID();
+  async reserveIngestion() {
     await this.connection.query(
-      `INSERT INTO knowledge_documents (id,organization_id,title,status) VALUES ($1,$2,$3,'queued')`,
-      [documentId, this.organizationId, input.title],
+      "SELECT pg_advisory_xact_lock(hashtextextended('resolvehub:ingestion-admission',0))",
     );
+    const pending = await this.connection.query<{ count: number }>(
+      'SELECT ingestion_pending_count() count',
+    );
+    if ((pending.rows[0]?.count ?? 1000) >= 1000) throw new StoreConflict('capacity');
+  }
+  async failure(id: string): Promise<unknown> {
+    const rows = await this.connection.query<{ data: unknown }>(
+      `SELECT jsonb_build_object('jobId',f.job_id,'errorCategory',f.error_category,'summary',f.summary,'inputFingerprint',f.input_fingerprint,'requestId',f.request_id,'replayEligible',f.replay_eligible AND f.replayed_as IS NULL,'replayedAs',f.replayed_as,'failedAt',f.failed_at,'attemptHistory',coalesce((SELECT jsonb_agg(jsonb_build_object('attempt',a.attempt,'stage',a.stage,'outcome',a.outcome,'errorCategory',a.error_category,'summary',a.summary,'startedAt',a.started_at,'finishedAt',a.finished_at) ORDER BY a.attempt) FROM job_attempts a WHERE a.organization_id=f.organization_id AND a.job_id=f.job_id),'[]'::jsonb)) data FROM failed_jobs f WHERE f.organization_id=$1 AND f.job_id=$2`,
+      [this.organizationId, id],
+    );
+    return rows.rows[0]?.data;
+  }
+  async createIngestion(
+    input: {
+      title?: string;
+      objectKey: string;
+      mediaType: string;
+      sizeBytes: number;
+      sha256: string;
+    },
+    existingDocumentId?: string,
+  ) {
+    const documentId = existingDocumentId ?? randomUUID();
+    const versionId = randomUUID();
+    if (existingDocumentId) {
+      const existing = await this.connection.query(
+        'SELECT id FROM knowledge_documents WHERE organization_id=$1 AND id=$2 AND deleted_at IS NULL FOR UPDATE',
+        [this.organizationId, documentId],
+      );
+      if (!existing.rowCount) throw new StoreConflict('not_found');
+    } else
+      await this.connection.query(
+        `INSERT INTO knowledge_documents (id,organization_id,title,status) VALUES ($1,$2,$3,'queued')`,
+        [documentId, this.organizationId, input.title],
+      );
     await this.connection.query(
       `INSERT INTO document_versions (id,organization_id,document_id,object_key,media_type,size_bytes,sha256)
       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
@@ -283,12 +309,22 @@ export class TenantRepository {
     payload: unknown,
     requestId: string,
     replayOf: string | null = null,
+    requestedBy: string | null = null,
   ): Promise<string> {
     const id = randomUUID();
     await this.connection.query(
-      `INSERT INTO job_runs (id,organization_id,kind,resource_id,payload,request_id,replay_of)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [id, this.organizationId, kind, resourceId, JSON.stringify(payload), requestId, replayOf],
+      `INSERT INTO job_runs (id,organization_id,kind,resource_id,payload,request_id,replay_of,requested_by)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [
+        id,
+        this.organizationId,
+        kind,
+        resourceId,
+        JSON.stringify(payload),
+        requestId,
+        replayOf,
+        requestedBy,
+      ],
     );
     return id;
   }
@@ -301,7 +337,7 @@ export class TenantRepository {
     return result.rows[0]?.data;
   }
 
-  async replay(id: string, requestId: string): Promise<string> {
+  async replay(id: string, requestId: string, requestedBy: string): Promise<string> {
     const result = await this.connection.query<{
       kind: string;
       resource_id: string | null;
@@ -319,7 +355,37 @@ export class TenantRepository {
       [this.organizationId, id],
     );
     if (child.rowCount) throw new StoreConflict('state');
-    return this.createJob(job.kind, job.resource_id, job.payload, requestId, id);
+    if (job.kind === 'document_ingestion') {
+      const failure = await this.connection.query(
+        'SELECT id FROM failed_jobs WHERE organization_id=$1 AND job_id=$2 AND replay_eligible AND replayed_as IS NULL FOR UPDATE',
+        [this.organizationId, id],
+      );
+      if (!failure.rowCount) throw new StoreConflict('state');
+      const input = z
+        .object({ documentId: z.uuid(), versionId: z.uuid() })
+        .strict()
+        .parse(job.payload);
+      const version = await this.connection.query(
+        `SELECT v.id FROM document_versions v JOIN knowledge_documents d ON d.organization_id=v.organization_id AND d.id=v.document_id WHERE v.organization_id=$1 AND v.id=$2 AND d.id=$3 AND v.deleted_at IS NULL AND d.deleted_at IS NULL AND v.status='failed'`,
+        [this.organizationId, input.versionId, input.documentId],
+      );
+      if (!version.rowCount) throw new StoreConflict('state');
+      await this.reserveIngestion();
+    }
+    const jobId = await this.createJob(
+      job.kind,
+      job.resource_id,
+      job.payload,
+      requestId,
+      id,
+      requestedBy,
+    );
+    if (job.kind === 'document_ingestion')
+      await this.connection.query(
+        'UPDATE failed_jobs SET replayed_as=$3 WHERE organization_id=$1 AND job_id=$2',
+        [this.organizationId, id, jobId],
+      );
+    return jobId;
   }
 
   async audit(actor: Actor, action: string, resourceId: string): Promise<void> {

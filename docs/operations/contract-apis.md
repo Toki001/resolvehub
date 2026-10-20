@@ -23,19 +23,21 @@ The command requires trusted database administration access. It displays the API
 
 Canonical definitions are in `packages/contracts/openapi.yaml`. All bearer mutations require a 16–128 character `Idempotency-Key` using letters, digits, `_` or `-`. Body fields not declared in the contract are rejected. `X-Request-ID` may be a UUID; otherwise the server generates one. Every attempt returns its own request-ID header. A replay returns the original status/body, including an asynchronous job's original correlation ID.
 
-| Operation                       | Behavior                                                                                |
-| ------------------------------- | --------------------------------------------------------------------------------------- |
-| `GET /v1/me`                    | Verified organization, membership, subject and role                                     |
-| `POST /v1/tickets`              | 201; atomically creates a ticket and customer message                                   |
-| `POST /v1/documents/ingestions` | 202; accepts staged-object metadata and creates document/version/request records        |
-| `POST /v1/tickets/{id}/drafts`  | 202; accepts an accessible ticket's draft request                                       |
-| `GET /v1/jobs/{id}`             | Actual tenant-scoped persisted request state                                            |
-| `POST /v1/jobs/{id}/replay`     | Admin-only 202; one accepted child for a failed source, original failure preserved      |
-| `POST /v1/drafts/{id}/approve`  | 200; audited human decision, expected revision and current published citations required |
-| `POST /v1/drafts/{id}/reject`   | 200; audited rejection with reason and expected revision                                |
-| `POST /v1/webhooks/tickets`     | Signed integration authentication; 202 receipt with event deduplication                 |
+| Operation                          | Behavior                                                                                |
+| ---------------------------------- | --------------------------------------------------------------------------------------- |
+| `GET /v1/me`                       | Verified organization, membership, subject and role                                     |
+| `POST /v1/tickets`                 | 201; atomically creates a ticket and customer message                                   |
+| `POST /v1/documents/ingestions`    | 202; accepts staged-object metadata and creates document/version/request records        |
+| `POST /v1/tickets/{id}/drafts`     | 202; accepts an accessible ticket's draft request                                       |
+| `POST /v1/documents/{id}/versions` | 202; immutable replacement upload, with the previous publication retained on failure    |
+| `GET /v1/jobs/{id}/failure`        | 200; tenant-scoped durable failure details and attempt history                          |
+| `GET /v1/jobs/{id}`                | Actual tenant-scoped persisted request state                                            |
+| `POST /v1/jobs/{id}/replay`        | Admin-only 202; one accepted child for a failed source, original failure preserved      |
+| `POST /v1/drafts/{id}/approve`     | 200; audited human decision, expected revision and current published citations required |
+| `POST /v1/drafts/{id}/reject`      | 200; audited rejection with reason and expected revision                                |
+| `POST /v1/webhooks/tickets`        | Signed integration authentication; 202 receipt with event deduplication                 |
 
-An ingestion object key must be exactly `organizations/<authenticated-organization-id>/uploads/<uuid>`. Arbitrary URLs, traversal and other organization namespaces are rejected. The caller stages bytes through an authorized storage flow; this milestone does not issue upload URLs. The later ingestion worker validates object existence, size, MIME and hash. **Accepted requests remain accepted until a domain processor is implemented.** They are not fake completed jobs, and no domain BullMQ consumer runs in this milestone.
+An ingestion object key must be exactly `organizations/<authenticated-organization-id>/uploads/<uuid>`. Arbitrary URLs, traversal and other organization namespaces are rejected. The caller stages bytes through an authorized storage flow; this milestone does not issue upload URLs. The later ingestion worker validates object existence, size, MIME and hash. Document ingestion is now processed by the milestone 04 worker; see [ingestion and recovery](ingestion-recovery.md). Draft and webhook domain requests remain accepted until their processors are implemented.
 
 Approval never sends a reply. It requires a pending draft, matching revision, a previously validated evidence flag and at least one citation still belonging to an active published version. Absent, stale or cross-tenant evidence returns 422. Repeated decisions with a new key conflict with the current state; retries with the original key replay the receipt. Draft creation/generation itself is deferred.
 
@@ -49,7 +51,7 @@ curl http://127.0.0.1:3001/v1/tickets \
   --data '{"subject":"Account access","customerEmail":"customer@example.test","message":"Please help me sign in."}'
 ```
 
-Errors use `{code,message,requestId,details?}`. Invalid input is 400; invalid credentials 401; role denial 403; missing/inaccessible resources 404; state/key conflict 409; oversized JSON 413; unreviewable evidence 422; dependency failure 503. Bodies are limited to 64 KiB. Authenticated CORS permits the configured origin and explicit request headers, with no credential cookies.
+Errors use `{code,message,requestId,details?}`. Invalid input is 400; invalid credentials 401; role denial 403; missing/inaccessible resources 404; state/key conflict 409; oversized JSON 413; unreviewable evidence 422; ingestion capacity 429 with Retry-After; dependency failure 503. Bodies are limited to 64 KiB. Authenticated CORS permits the configured origin and explicit request headers, with no credential cookies.
 
 ## Signed webhooks
 
@@ -78,4 +80,4 @@ GraphQL execution errors use `errors[].extensions.{code,message,requestId,httpSt
 - `pnpm test:integration`: real running API/worker and PostgreSQL; creates isolated synthetic organizations and removes them afterward.
 - `pnpm build`, then `pnpm start`: compiled local stack, with production Node mode.
 
-Run migrations before startup; readiness requires the current contract migration. The migration runner checks applied SQL checksums and supports repeated runs. Never edit an applied migration. Use additive follow-up SQL and preserve idempotency/audit records. No retention/pruning command, public auth management API, domain worker, outbound messaging, production RLS, or complete fixture corpus is supplied in this milestone.
+Run migrations before startup; readiness requires the current contract migration. The migration runner checks applied SQL checksums and supports repeated runs. Never edit an applied migration. Use additive follow-up SQL and preserve idempotency/audit records. No automatic retention/pruning, public auth management API or outbound messaging is supplied. Later milestones added full persistence, fixtures and tenant policies; milestone 04 supplies the document worker and durable DLQ. Legacy draft/webhook processors remain deferred.

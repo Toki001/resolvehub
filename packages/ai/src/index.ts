@@ -27,3 +27,11 @@ export class MockDraftProvider implements DraftProvider {
     };
   }
 }
+
+export {
+  SyntheticEmbeddingProvider,
+  syntheticEmbedding,
+  SYNTHETIC_MODEL,
+  SYNTHETIC_DIMENSIONS,
+} from './embedding.js';
+export type { EmbeddingProvider } from './embedding.js';

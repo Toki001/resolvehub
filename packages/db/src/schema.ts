@@ -398,6 +398,13 @@ export const jobRuns = pgTable(
     reasonCode: text('reason_code'),
     requestId: uuid('request_id').notNull(),
     replayOf: uuid('replay_of'),
+    requestedBy: uuid('requested_by'),
+    availableAt: timestamp('available_at', { withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
+    dispatchAfter: timestamp('dispatch_after', { withTimezone: true, precision: 3 })
+      .defaultNow()
+      .notNull(),
     createdAt: created(),
     updatedAt: updated(),
   },
@@ -410,6 +417,17 @@ export const jobRuns = pgTable(
       columns: [t.organizationId, t.replayOf],
       foreignColumns: [t.organizationId, t.id],
     }),
+    foreignKey({
+      name: 'job_requester_owned',
+      columns: [t.organizationId, t.requestedBy],
+      foreignColumns: [memberships.organizationId, memberships.id],
+    }),
+    index('ingestion_dispatch')
+      .on(t.availableAt, t.dispatchAfter, t.createdAt, t.id)
+      .where(sql`${t.kind}='document_ingestion' and ${t.status} in ('accepted','processing')`),
+    uniqueIndex('one_live_ingestion_version')
+      .on(t.organizationId, sql`(${t.payload}->>'versionId')`)
+      .where(sql`${t.kind}='document_ingestion' and ${t.status} in ('accepted','processing')`),
     index('job_runs_tenant_state').on(t.organizationId, t.status, t.createdAt),
     check('replay_is_distinct', sql`${t.replayOf} is null or ${t.replayOf}<>${t.id}`),
     check('job_runs_attempts_check', sql`${t.attempts}>=0`),
@@ -469,5 +487,92 @@ export const auditEvents = pgTable(
       t.id.desc(),
     ),
     check('audit_events_actor_kind_check', sql`${t.actorKind} in ('membership','integration')`),
+  ],
+).enableRLS();
+
+export const jobAttempts = pgTable(
+  'job_attempts',
+  {
+    organizationId: uuid('organization_id').notNull(),
+    jobId: uuid('job_id').notNull(),
+    attempt: integer().notNull(),
+    stage: text().notNull(),
+    outcome: text({
+      enum: ['running', 'succeeded', 'transient', 'permanent', 'abandoned'],
+    }).notNull(),
+    errorCategory: text('error_category'),
+    summary: text(),
+    startedAt: timestamp('started_at', { withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    finishedAt: timestamp('finished_at', { withTimezone: true, precision: 3 }),
+  },
+  (t) => [
+    tenantPolicy('job_attempts_tenant', t.organizationId),
+    primaryKey({ columns: [t.organizationId, t.jobId, t.attempt] }),
+    foreignKey({
+      columns: [t.organizationId, t.jobId],
+      foreignColumns: [jobRuns.organizationId, jobRuns.id],
+    }).onDelete('cascade'),
+    check('job_attempts_attempt_check', sql`${t.attempt} between 1 and 4`),
+    check(
+      'job_attempts_outcome_check',
+      sql`${t.outcome} in ('running','succeeded','transient','permanent','abandoned')`,
+    ),
+  ],
+).enableRLS();
+export const ingestionArtifacts = pgTable(
+  'ingestion_artifacts',
+  {
+    organizationId: uuid('organization_id').notNull(),
+    documentId: uuid('document_id').notNull(),
+    versionId: uuid('version_id').notNull(),
+    fingerprint: text().notNull(),
+    extractedText: text('extracted_text').notNull(),
+    pipelineVersion: text('pipeline_version').notNull(),
+    createdAt: created(),
+  },
+  (t) => [
+    tenantPolicy('ingestion_artifacts_tenant', t.organizationId),
+    primaryKey({ columns: [t.organizationId, t.documentId, t.versionId] }),
+    foreignKey({
+      columns: [t.organizationId, t.documentId, t.versionId],
+      foreignColumns: [
+        documentVersions.organizationId,
+        documentVersions.documentId,
+        documentVersions.id,
+      ],
+    }).onDelete('cascade'),
+    check('ingestion_artifacts_fingerprint_check', sql`${t.fingerprint} ~ '^[a-f0-9]{64}$'`),
+    check(
+      'ingestion_artifacts_extracted_text_check',
+      sql`length(${t.extractedText}) between 1 and 200000`,
+    ),
+  ],
+).enableRLS();
+export const failedJobs = pgTable(
+  'failed_jobs',
+  {
+    id: uuid().primaryKey(),
+    organizationId: uuid('organization_id').notNull(),
+    jobId: uuid('job_id').notNull(),
+    errorCategory: text('error_category').notNull(),
+    summary: text().notNull(),
+    inputFingerprint: text('input_fingerprint').notNull(),
+    requestId: uuid('request_id').notNull(),
+    replayEligible: boolean('replay_eligible').notNull(),
+    replayedAs: uuid('replayed_as'),
+    failedAt: timestamp('failed_at', { withTimezone: true, precision: 3 }).defaultNow().notNull(),
+  },
+  (t) => [
+    tenantPolicy('failed_jobs_tenant', t.organizationId),
+    unique().on(t.organizationId, t.jobId),
+    foreignKey({
+      columns: [t.organizationId, t.jobId],
+      foreignColumns: [jobRuns.organizationId, jobRuns.id],
+    }).onDelete('cascade'),
+    foreignKey({
+      columns: [t.organizationId, t.replayedAs],
+      foreignColumns: [jobRuns.organizationId, jobRuns.id],
+    }),
+    index('failed_jobs_page').on(t.organizationId, t.failedAt.desc(), t.id.desc()),
   ],
 ).enableRLS();

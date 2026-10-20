@@ -12,3 +12,6 @@ allowBuilds:
   msgpackr-extract: true
   sharp: true
   unrs-resolver: true
+  cpu-features: false
+  protobufjs: false
+  ssh2: false

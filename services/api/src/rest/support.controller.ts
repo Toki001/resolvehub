@@ -73,6 +73,30 @@ export class SupportController {
     );
   }
 
+  @Post('documents/:id/versions')
+  async version(
+    @Req() request: ApiRequest,
+    @Param('id') id: string,
+    @Headers('idempotency-key') key: unknown,
+    @Body() input: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return send(
+      response,
+      await this.support.ingestion(
+        identityOf(request),
+        request.requestId,
+        key,
+        this.validator.validate('DocumentVersionInput', input),
+        z.uuid().parse(id).toLowerCase(),
+      ),
+    );
+  }
+  @Get('jobs/:id/failure')
+  failure(@Req() request: ApiRequest, @Param('id') id: string) {
+    return this.support.failure(identityOf(request), z.uuid().parse(id).toLowerCase());
+  }
+
   @Post('tickets/:id/drafts')
   async draft(
     @Req() request: ApiRequest,

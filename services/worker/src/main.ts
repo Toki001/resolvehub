@@ -5,9 +5,26 @@ import { PROBE_QUEUE } from '@resolvehub/contracts';
 import type { Readiness } from '@resolvehub/contracts';
 import { parseWorkerEnv } from './env.js';
 import { processProbe } from './probe.js';
+import {
+  createDatabase,
+  CONTRACT_MIGRATION,
+  EMBEDDING_MODEL,
+  EMBEDDING_DIMENSIONS,
+} from '@resolvehub/db';
+import { createIngestionRuntime } from './ingestion/runtime.js';
 
 async function bootstrap(): Promise<void> {
   const env = parseWorkerEnv(process.env);
+  const database = createDatabase(env.DATABASE_URL, { maxConnections: env.WORKER_CONCURRENCY + 2 });
+  database.pool.on('error', () => console.warn('Worker database connection interrupted'));
+  const ingestion = createIngestionRuntime(
+    env,
+    database.pool,
+    new URL(
+      import.meta.url.endsWith('.ts') ? './ingestion/pdf-parser.ts' : './ingestion/pdf-parser.js',
+      import.meta.url,
+    ),
+  );
   const connection = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
     connectTimeout: 2_000,
@@ -20,7 +37,6 @@ async function bootstrap(): Promise<void> {
     {
       connection,
       concurrency: env.WORKER_CONCURRENCY,
-      // No domain jobs are registered before durable failure handling exists.
       removeOnComplete: { count: 100, age: 3_600 },
       removeOnFail: { count: 100, age: 86_400 },
     },
@@ -51,27 +67,34 @@ async function bootstrap(): Promise<void> {
       response.writeHead(404).end(JSON.stringify({ code: 'NOT_FOUND' }));
       return;
     }
-    void healthConnection
-      .ping()
-      .then((reply) => {
-        const redis = reply === 'PONG' ? 'up' : 'down';
-        const consumer = worker.isRunning() ? 'up' : 'down';
-        const ready = redis === 'up' && consumer === 'up';
-        const body: Readiness = {
-          service: 'worker',
-          status: ready ? 'ready' : 'not_ready',
-          checks: { redis, consumer },
-        };
-        response.writeHead(ready ? 200 : 503).end(JSON.stringify(body));
-      })
-      .catch(() => {
-        const body: Readiness = {
-          service: 'worker',
-          status: 'not_ready',
-          checks: { redis: 'down', consumer: worker.isRunning() ? 'up' : 'down' },
-        };
-        response.writeHead(503).end(JSON.stringify(body));
-      });
+    void Promise.allSettled([
+      healthConnection.ping().then((reply) => {
+        if (reply !== 'PONG') throw new Error('Redis not ready');
+      }),
+      database.pool
+        .query(
+          'SELECT 1 FROM schema_migrations WHERE name=$1 AND EXISTS(SELECT 1 FROM embedding_configuration WHERE model=$2 AND dimensions=$3)',
+          [CONTRACT_MIGRATION, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS],
+        )
+        .then((result) => {
+          if (!result.rowCount) throw new Error('Database not ready');
+        }),
+      fetch(new URL('/minio/health/ready', env.S3_ENDPOINT), {
+        signal: AbortSignal.timeout(2000),
+      }).then((result) => {
+        if (!result.ok) throw new Error('Storage not ready');
+      }),
+    ]).then((results) => {
+      const checks = {
+        redis: results[0]?.status === 'fulfilled' ? ('up' as const) : ('down' as const),
+        postgres: results[1]?.status === 'fulfilled' ? ('up' as const) : ('down' as const),
+        storage: results[2]?.status === 'fulfilled' ? ('up' as const) : ('down' as const),
+        consumer: worker.isRunning() && ingestion.ready() ? ('up' as const) : ('down' as const),
+      };
+      const ready = Object.values(checks).every((status) => status === 'up');
+      const body: Readiness = { service: 'worker', status: ready ? 'ready' : 'not_ready', checks };
+      response.writeHead(ready ? 200 : 503).end(JSON.stringify(body));
+    });
   });
 
   const shutdown = () => {
@@ -80,6 +103,8 @@ async function bootstrap(): Promise<void> {
     server.close();
     void worker
       .close()
+      .then(() => ingestion.close())
+      .then(() => database.pool.end())
       .then(() => {
         connection.disconnect();
         healthConnection.disconnect();

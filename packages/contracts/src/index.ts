@@ -16,8 +16,8 @@ export const errorSchema = z.object({
 });
 export type ApiError = z.infer<typeof errorSchema>;
 
-// Operational probes contain no tenant data. Domain queues require authenticated,
-// tenant-scoped contracts and a durable application DLQ in a later milestone.
+// Operational probes contain no tenant data. Domain jobs carry immutable
+// identifiers; processors reload authoritative state and authorization.
 export const PROBE_QUEUE = 'resolvehub-system-probes';
 export const probeJobSchema = z.object({ requestId: z.uuid() }).strict();
 export const probeResultSchema = z.object({
@@ -26,3 +26,7 @@ export const probeResultSchema = z.object({
 });
 export type ProbeJob = z.infer<typeof probeJobSchema>;
 export type ProbeResult = z.infer<typeof probeResultSchema>;
+
+export const INGESTION_QUEUE = 'resolvehub-document-ingestion-v1';
+export const ingestionJobSchema = z.object({ organizationId: z.uuid(), jobId: z.uuid() }).strict();
+export type IngestionJob = z.infer<typeof ingestionJobSchema>;

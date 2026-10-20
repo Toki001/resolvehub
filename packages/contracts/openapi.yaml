@@ -246,7 +246,7 @@ paths:
         '422':
           $ref: '#/components/responses/Error'
         '429':
-          $ref: '#/components/responses/Error'
+          $ref: '#/components/responses/CapacityError'
         '500':
           $ref: '#/components/responses/Error'
         '503':
@@ -257,6 +257,84 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/IngestionInput'
+  /v1/documents/{id}/versions:
+    post:
+      operationId: requestDocumentVersion
+      description: Accept a durable ingestion request for a staged object in the authenticated
+        organization’s namespace. Parsing/indexing is asynchronous; acceptance is not index
+        publication. Requires admin or agent. A replacement never removes the current active index before publication.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description:
+            Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours.
+            Same method/path and normalized payload replay the original status/body; conflicting
+            reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains
+            its original requestId.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '202':
+          description: Ingestion request durably accepted
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Relative resource or job-status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/CapacityError'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DocumentVersionInput'
   /v1/tickets/{id}/drafts:
     post:
       operationId: requestDraft
@@ -364,6 +442,61 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/jobs/{id}/failure:
+    get:
+      operationId: getJobFailure
+      description:
+        Return actual tenant-scoped durable job status. Unknown and inaccessible jobs both
+        return 404.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current job status
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FailedJob'
         '400':
           $ref: '#/components/responses/Error'
         '401':
@@ -892,6 +1025,36 @@ components:
         sha256:
           type: string
           pattern: ^[a-f0-9]{64}$
+    DocumentVersionInput:
+      type: object
+      additionalProperties: false
+      required:
+        - objectKey
+        - mediaType
+        - sizeBytes
+        - sha256
+      properties:
+        objectKey:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^organizations/[0-9a-f-]{36}/uploads/[0-9a-f-]{36}$
+          description:
+            Existing staged object key. The organization namespace must match the authenticated
+            identity; filenames, URLs and traversal segments are not accepted.
+        mediaType:
+          type: string
+          enum:
+            - text/plain
+            - text/markdown
+            - application/pdf
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
     AcceptedJob:
       type: object
       additionalProperties: false
@@ -966,8 +1129,59 @@ components:
           type: string
           format: date-time
       description:
-        Durable request state. Milestone 02 records accepted requests; processors arrive in
-        later milestones. accepted is not a claim that work has started.
+        Durable request state. Document ingestion is processed asynchronously with durable attempts and failures.
+        Other job kinds remain accepted until their processors are implemented.
+    FailedJob:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          jobId,
+          errorCategory,
+          summary,
+          inputFingerprint,
+          requestId,
+          replayEligible,
+          replayedAs,
+          failedAt,
+          attemptHistory,
+        ]
+      properties:
+        jobId: { type: string, format: uuid }
+        errorCategory: { type: string }
+        summary: { type: string }
+        inputFingerprint: { type: string, pattern: '^[a-f0-9]{64}$' }
+        requestId: { type: string, format: uuid }
+        replayEligible: { type: boolean }
+        replayedAs:
+          anyOf:
+            - { type: string, format: uuid }
+            - { type: 'null' }
+        failedAt: { type: string, format: date-time }
+        attemptHistory:
+          type: array
+          maxItems: 4
+          items:
+            type: object
+            additionalProperties: false
+            required: [attempt, stage, outcome, errorCategory, summary, startedAt, finishedAt]
+            properties:
+              attempt: { type: integer, minimum: 1, maximum: 4 }
+              stage: { type: string }
+              outcome: { type: string, enum: [running, succeeded, transient, permanent, abandoned] }
+              errorCategory:
+                anyOf:
+                  - { type: string }
+                  - { type: 'null' }
+              summary:
+                anyOf:
+                  - { type: string }
+                  - { type: 'null' }
+              startedAt: { type: string, format: date-time }
+              finishedAt:
+                anyOf:
+                  - { type: string, format: date-time }
+                  - { type: 'null' }
     Citation:
       type: object
       additionalProperties: false
@@ -1097,6 +1311,19 @@ components:
           schema:
             type: string
             format: uuid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    CapacityError:
+      description: The durable ingestion backlog is full; retry after the indicated delay.
+      headers:
+        X-Request-ID:
+          schema: { type: string, format: uuid }
+        Retry-After:
+          schema: { type: integer, minimum: 1 }
+          description: Seconds to wait before submitting another request.
       content:
         application/json:
           schema:

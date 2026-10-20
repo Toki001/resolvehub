@@ -87,6 +87,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/documents/{id}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept a durable ingestion request for a staged object in the authenticated organization’s namespace. Parsing/indexing is asynchronous; acceptance is not index publication. Requires admin or agent. A replacement never removes the current active index before publication. */
+        post: operations["requestDocumentVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tickets/{id}/drafts": {
         parameters: {
             query?: never;
@@ -113,6 +130,23 @@ export interface paths {
         };
         /** @description Return actual tenant-scoped durable job status. Unknown and inaccessible jobs both return 404. */
         get: operations["getJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/{id}/failure": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return actual tenant-scoped durable job status. Unknown and inaccessible jobs both return 404. */
+        get: operations["getJobFailure"];
         put?: never;
         post?: never;
         delete?: never;
@@ -258,6 +292,14 @@ export interface components {
             sizeBytes: number;
             sha256: string;
         };
+        DocumentVersionInput: {
+            /** @description Existing staged object key. The organization namespace must match the authenticated identity; filenames, URLs and traversal segments are not accepted. */
+            objectKey: string;
+            /** @enum {string} */
+            mediaType: "text/plain" | "text/markdown" | "application/pdf";
+            sizeBytes: number;
+            sha256: string;
+        };
         AcceptedJob: {
             /** Format: uuid */
             jobId: string;
@@ -267,7 +309,7 @@ export interface components {
             /** Format: uuid */
             requestId: string;
         };
-        /** @description Durable request state. Milestone 02 records accepted requests; processors arrive in later milestones. accepted is not a claim that work has started. */
+        /** @description Durable request state. Document ingestion is processed asynchronously with durable attempts and failures. Other job kinds remain accepted until their processors are implemented. */
         Job: {
             /** Format: uuid */
             id: string;
@@ -284,6 +326,30 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        FailedJob: {
+            /** Format: uuid */
+            jobId: string;
+            errorCategory: string;
+            summary: string;
+            inputFingerprint: string;
+            /** Format: uuid */
+            requestId: string;
+            replayEligible: boolean;
+            replayedAs: string | null;
+            /** Format: date-time */
+            failedAt: string;
+            attemptHistory: {
+                attempt: number;
+                stage: string;
+                /** @enum {string} */
+                outcome: "running" | "succeeded" | "transient" | "permanent" | "abandoned";
+                errorCategory: string | null;
+                summary: string | null;
+                /** Format: date-time */
+                startedAt: string;
+                finishedAt: string | null;
+            }[];
         };
         Citation: {
             /** Format: uuid */
@@ -334,6 +400,18 @@ export interface components {
             headers: {
                 /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
                 "X-Request-ID"?: string;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+        /** @description The durable ingestion backlog is full; retry after the indicated delay. */
+        CapacityError: {
+            headers: {
+                "X-Request-ID"?: string;
+                /** @description Seconds to wait before submitting another request. */
+                "Retry-After"?: number;
                 [name: string]: unknown;
             };
             content: {
@@ -522,7 +600,52 @@ export interface operations {
             409: components["responses"]["Error"];
             413: components["responses"]["Error"];
             422: components["responses"]["Error"];
-            429: components["responses"]["Error"];
+            429: components["responses"]["CapacityError"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    requestDocumentVersion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                /** @description Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours. Same method/path and normalized payload replay the original status/body; conflicting reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains its original requestId. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentVersionInput"];
+            };
+        };
+        responses: {
+            /** @description Ingestion request durably accepted */
+            202: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    /** @description Relative resource or job-status URL. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedJob"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["CapacityError"];
             500: components["responses"]["Error"];
             503: components["responses"]["Error"];
         };
@@ -591,6 +714,43 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Job"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    getJobFailure: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current job status */
+            200: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FailedJob"];
                 };
             };
             400: components["responses"]["Error"];

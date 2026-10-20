@@ -72,6 +72,7 @@ test('migrations install cleanly, preserve rows through expansion, repeat safely
       '0004_persistence_validate.sql',
       '0005_citation_fixture_timestamps.sql',
       '0006_preserve_pending_ingestion.sql',
+      '0007_ingestion_pipeline.sql',
     ]);
     expect(
       (

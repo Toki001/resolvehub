@@ -15,3 +15,7 @@ GRANT SELECT,INSERT,UPDATE,DELETE ON customers,tickets,ticket_messages,
 GRANT SELECT,INSERT ON audit_events TO resolvehub_runtime;
 -- Runtime cannot create roles, migrate, mutate memberships/credentials or alter
 -- audit history. RLS expects SET LOCAL resolvehub.organization_id inside a tx.
+
+GRANT SELECT ON failed_jobs,job_attempts TO resolvehub_runtime;
+GRANT UPDATE(replayed_as) ON failed_jobs TO resolvehub_runtime;
+GRANT EXECUTE ON FUNCTION ingestion_pending_count() TO resolvehub_runtime;

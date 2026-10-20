@@ -451,9 +451,7 @@ test('ingestion and drafting return durable 202 receipts and actual tenant-safe 
   expect(result.response.headers.get('location')).toBe(receipt.statusUrl);
   const job = await rest('GET', '/v1/jobs/{id}', receipt.statusUrl, { token: tokenA });
   expect(schema('Job', job.body)).toMatchObject({
-    status: 'accepted',
     kind: 'document_ingestion',
-    attempts: 0,
     requestId: receipt.requestId,
   });
   expect(

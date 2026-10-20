@@ -64,6 +64,8 @@ export class SupportService {
       if (error instanceof z.ZodError)
         throw new ApiFault(500, 'INTERNAL_ERROR', 'Stored data violated its contract.');
       if (error instanceof StoreConflict) {
+        if (error.kind === 'capacity')
+          throw new ApiFault(429, 'CAPACITY_EXCEEDED', 'Ingestion capacity is full. Retry later.');
         if (error.kind === 'not_found') throw notFound();
         if (error.kind === 'evidence')
           throw new ApiFault(
@@ -127,22 +129,37 @@ export class SupportService {
     });
   }
 
-  ingestion(identity: Identity, requestId: string, key: unknown, input: Schemas['IngestionInput']) {
+  ingestion(
+    identity: Identity,
+    requestId: string,
+    key: unknown,
+    input: Schemas['IngestionInput'] | Schemas['DocumentVersionInput'],
+    documentId?: string,
+  ) {
     this.writeAccess(identity);
     if (!input.objectKey.startsWith(`organizations/${identity.organizationId}/uploads/`))
       throw new ApiFault(403, 'FORBIDDEN', 'Object namespace is not accessible.');
     const actor = this.actor(identity, requestId);
-    return this.mutate(actor, key, 'POST /v1/documents/ingestions', input, async (repository) => {
-      const document = await repository.createIngestion(input);
-      const jobId = await repository.createJob(
-        'document_ingestion',
-        document.documentId,
-        document,
-        requestId,
-      );
-      await repository.audit(actor, 'ingestion.accepted', jobId);
-      return this.accepted(jobId, requestId);
-    });
+    return this.mutate(
+      actor,
+      key,
+      documentId ? `POST /v1/documents/${documentId}/versions` : 'POST /v1/documents/ingestions',
+      input,
+      async (repository) => {
+        await repository.reserveIngestion();
+        const document = await repository.createIngestion(input, documentId);
+        const jobId = await repository.createJob(
+          'document_ingestion',
+          document.documentId,
+          document,
+          requestId,
+          null,
+          identity.membershipId,
+        );
+        await repository.audit(actor, 'ingestion.accepted', jobId);
+        return this.accepted(jobId, requestId);
+      },
+    );
   }
 
   requestDraft(identity: Identity, requestId: string, key: unknown, id: string) {
@@ -199,7 +216,7 @@ export class SupportService {
     this.writeAccess(identity, true);
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, `POST /v1/jobs/${id}/replay`, {}, async (repository) => {
-      const jobId = await repository.replay(id, requestId);
+      const jobId = await repository.replay(id, requestId, identity.membershipId);
       await repository.audit(actor, 'job.replayed', jobId);
       return this.accepted(jobId, requestId);
     });
@@ -211,6 +228,14 @@ export class SupportService {
       const jobId = await repository.createJob('ticket_webhook', null, input, actor.requestId);
       await repository.audit(actor, 'webhook.accepted', jobId);
       return this.accepted(jobId, actor.requestId);
+    });
+  }
+
+  async failure(identity: Identity, id: string) {
+    return this.execute(async () => {
+      const failure = await this.database.store.tenant(identity.organizationId).failure(id);
+      if (!failure) throw notFound();
+      return this.validator.validate('FailedJob', failure, true);
     });
   }
 

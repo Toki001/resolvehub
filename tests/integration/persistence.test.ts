@@ -407,6 +407,9 @@ test('the provisioned runtime grants support authentication, scoped mutations an
       await new KnowledgeRepository(runtime, orgA).nearest(syntheticEmbedding('report')),
     ).toHaveLength(5);
     expect((await runtime.query('SELECT id FROM tickets')).rowCount).toBe(0);
+    await expect(
+      runtime.query('SELECT * FROM ingestion_dispatch_candidates()'),
+    ).rejects.toMatchObject({ code: '42501' });
     await expect(runtime.query("UPDATE audit_events SET action='tampered'")).rejects.toMatchObject({
       code: '42501',
     });

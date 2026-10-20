@@ -21,6 +21,10 @@ export function parseApiEnv(input: NodeJS.ProcessEnv): ApiEnv {
     const fields = [...new Set(result.error.issues.map((issue) => issue.path.join('.')))];
     throw new Error(`Invalid API environment: ${fields.join(', ')}`);
   }
-  parseEmbeddingConfiguration(input);
+  try {
+    parseEmbeddingConfiguration(input);
+  } catch {
+    throw new Error('Invalid API environment: EMBEDDING_MODEL, EMBEDDING_DIMENSIONS');
+  }
   return result.data;
 }
