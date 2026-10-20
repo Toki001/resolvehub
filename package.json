@@ -1,0 +1,51 @@
+{
+  "name": "resolvehub",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.10.1",
+  "engines": {
+    "node": ">=22.22.3 <23",
+    "pnpm": "12.10.1"
+  },
+  "scripts": {
+    "dev": "turbo run dev --env-mode=loose",
+    "build": "turbo run build",
+    "start": "turbo run start --env-mode=loose",
+    "typecheck": "turbo run typecheck && tsc -p tests/tsconfig.json",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "generate": "pnpm --filter @resolvehub/generated generate",
+    "test": "jest --runInBand",
+    "test:integration": "dotenv -e .env -- jest --config tests/jest.integration.config.cjs --runInBand",
+    "test:e2e": "dotenv -e .env -- playwright test",
+    "smoke": "dotenv -e .env -- tsx scripts/smoke.ts",
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "infra:check": "docker compose config --quiet",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.56.1",
+    "@resolvehub/contracts": "workspace:*",
+    "@resolvehub/db": "workspace:*",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.19.0",
+    "bullmq": "^5.61.0",
+    "dotenv-cli": "^10.0.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.5.0",
+    "ioredis": "^5.11.1",
+    "jest": "^30.2.0",
+    "prettier": "^3.6.2",
+    "ts-jest": "^29.4.5",
+    "tsx": "^4.20.6",
+    "turbo": "2.11.9",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.46.2",
+    "zod": "^4.1.12"
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "name": "@resolvehub/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "dotenv -e ../../.env -- tsx watch src/main.ts",
+    "start": "dotenv -e ../../.env -v NODE_ENV=production -- node dist/main.js"
+  },
+  "dependencies": {
+    "@resolvehub/contracts": "workspace:*",
+    "@resolvehub/db": "workspace:*",
+    "@nestjs/common": "12.2.0",
+    "@nestjs/core": "12.2.0",
+    "@nestjs/platform-express": "12.2.0",
+    "helmet": "^8.1.0",
+    "ioredis": "^5.8.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.5",
+    "dotenv-cli": "^10.0.0",
+    "tsx": "^4.20.6"
+  }
+}

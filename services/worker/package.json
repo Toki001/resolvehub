@@ -1,0 +1,22 @@
+{
+  "name": "@resolvehub/worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "dotenv -e ../../.env -- tsx watch src/main.ts",
+    "start": "dotenv -e ../../.env -v NODE_ENV=production -- node dist/main.js"
+  },
+  "dependencies": {
+    "@resolvehub/contracts": "workspace:*",
+    "bullmq": "^5.61.0",
+    "ioredis": "^5.8.1",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "dotenv-cli": "^10.0.0",
+    "tsx": "^4.20.6"
+  }
+}

@@ -1,0 +1,13 @@
+packages:
+  - apps/*
+  - services/*
+  - packages/*
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@nestjs/core': false
+  '@tailwindcss/oxide': true
+  esbuild: true
+  msgpackr-extract: true
+  sharp: true
+  unrs-resolver: true

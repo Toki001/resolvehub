@@ -1,0 +1,47 @@
+openapi: 3.1.0
+info:
+  title: ResolveHub operational API
+  version: 0.1.0
+  description: Milestone 01 health contract. Authenticated domain contracts arrive in milestone 02.
+servers:
+  - url: http://localhost:3001
+paths:
+  /health/live:
+    get:
+      operationId: getLiveness
+      responses:
+        '200':
+          description: Process is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, service]
+                properties:
+                  status: { type: string, const: alive }
+                  service: { type: string, const: api }
+  /health/ready:
+    get:
+      operationId: getReadiness
+      responses:
+        '200':
+          description: Dependencies are available
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
+        '503':
+          description: One or more dependencies are unavailable
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Readiness' }
+components:
+  schemas:
+    Readiness:
+      type: object
+      required: [status, service, checks]
+      properties:
+        status: { type: string, enum: [ready, not_ready] }
+        service: { type: string, enum: [api, worker] }
+        checks:
+          type: object
+          additionalProperties: { type: string, enum: [up, down] }
