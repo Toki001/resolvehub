@@ -4,6 +4,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  '@apollo/protobufjs': false
   '@parcel/watcher': true
   '@nestjs/core': false
   '@tailwindcss/oxide': true

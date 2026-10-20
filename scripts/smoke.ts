@@ -8,7 +8,7 @@ async function smoke() {
   const redisUrl = process.env.REDIS_URL;
   if (!redisUrl) throw new Error('REDIS_URL is required');
   for (const [name, base] of [
-    ['web', 'http://127.0.0.1:3000/api/health'],
+    ['web', `${process.env.WEB_ORIGIN ?? 'http://127.0.0.1:3000'}/api/health`],
     ['api', `${process.env.API_URL ?? 'http://127.0.0.1:3001'}/health/ready`],
     ['worker', `${process.env.WORKER_URL ?? 'http://127.0.0.1:3002'}/health/ready`],
   ]) {

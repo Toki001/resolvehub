@@ -1,10 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { OnModuleDestroy } from '@nestjs/common';
-import { createDatabase } from '@resolvehub/db';
 import type { Readiness } from '@resolvehub/contracts';
 import { Redis } from 'ioredis';
 import { API_ENV } from './env.js';
 import type { ApiEnv } from './env.js';
+import { DatabaseService } from './application/database.service.js';
+import { CONTRACT_MIGRATION } from '@resolvehub/db';
 
 @Injectable()
 export class HealthService implements OnModuleDestroy {
@@ -12,9 +13,11 @@ export class HealthService implements OnModuleDestroy {
   private readonly database;
   private readonly redis;
 
-  constructor(@Inject(API_ENV) private readonly env: ApiEnv) {
-    this.database = createDatabase(env.DATABASE_URL);
-    this.database.pool.on('error', () => this.logger.warn('Database connection interrupted'));
+  constructor(
+    @Inject(API_ENV) private readonly env: ApiEnv,
+    @Inject(DatabaseService) databaseService: DatabaseService,
+  ) {
+    this.database = databaseService.database;
     this.redis = new Redis(env.REDIS_URL, {
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
@@ -27,7 +30,10 @@ export class HealthService implements OnModuleDestroy {
   async readiness(): Promise<Readiness> {
     const results = await Promise.allSettled([
       this.database.pool
-        .query("SELECT extversion FROM pg_extension WHERE extname = 'vector'")
+        .query(
+          "SELECT extversion FROM pg_extension WHERE extname = 'vector' AND EXISTS (SELECT 1 FROM schema_migrations WHERE name=$1)",
+          [CONTRACT_MIGRATION],
+        )
         .then((result) => {
           if (result.rowCount !== 1) throw new Error('Required extension unavailable');
         }),
@@ -57,6 +63,5 @@ export class HealthService implements OnModuleDestroy {
 
   async onModuleDestroy(): Promise<void> {
     this.redis.disconnect();
-    await this.database.pool.end();
   }
 }

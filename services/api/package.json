@@ -19,7 +19,16 @@
     "ioredis": "^5.8.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@nestjs/graphql": "14.0.3",
+    "@nestjs/apollo": "14.0.3",
+    "@apollo/server": "^5.0.0",
+    "@as-integrations/express5": "^1.1.2",
+    "graphql": "^16.11.0",
+    "@resolvehub/generated": "workspace:*",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",

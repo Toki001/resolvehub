@@ -1,7 +1,7 @@
 const endpoints = [
-  'http://127.0.0.1:3000/api/health',
-  'http://127.0.0.1:3001/health/ready',
-  'http://127.0.0.1:3002/health/ready',
+  `${process.env.WEB_ORIGIN ?? 'http://127.0.0.1:3000'}/api/health`,
+  `${process.env.API_URL ?? 'http://127.0.0.1:3001'}/health/ready`,
+  `${process.env.WORKER_URL ?? 'http://127.0.0.1:3002'}/health/ready`,
 ];
 const deadline = Date.now() + 30_000;
 while (Date.now() < deadline) {

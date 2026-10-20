@@ -12,6 +12,7 @@ export default tseslint.config(
       '**/.turbo/**',
       '**/coverage/**',
       'packages/generated/src/rest.ts',
+      'packages/generated/src/graphql/**',
       'playwright-report/**',
       'test-results/**',
     ],

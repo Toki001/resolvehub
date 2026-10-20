@@ -14,7 +14,7 @@ test.each([apiUrl, workerUrl])('running service is live and ready: %s', async (u
 });
 
 test('unknown API routes have safe, correlated errors', async () => {
-  const response = await fetch(`${apiUrl}/v1/tickets`, { signal: AbortSignal.timeout(5_000) });
+  const response = await fetch(`${apiUrl}/v1/unknown`, { signal: AbortSignal.timeout(5_000) });
   expect(response.status).toBe(404);
   const body = errorSchema.parse(await response.json());
   expect(body.code).toBe('NOT_FOUND');

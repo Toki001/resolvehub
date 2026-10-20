@@ -3,6 +3,7 @@ import { parseWorkerEnv } from '../../services/worker/src/env.js';
 import { parseWebEnv } from '../../apps/web/src/lib/env.js';
 
 const api = {
+  API_SECRET_KEY: '1'.repeat(64),
   DATABASE_URL: 'postgresql://user:do-not-log@localhost:5432/db',
   REDIS_URL: 'redis://localhost:6379',
   S3_ENDPOINT: 'http://localhost:9000',

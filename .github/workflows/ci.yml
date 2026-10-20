@@ -1,4 +1,4 @@
-name: Foundation checks
+name: ResolveHub checks
 
 on:
   push:
@@ -26,14 +26,16 @@ jobs:
         run: npm install --global pnpm@12.10.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit --prod --audit-level high
-      - run: cp .env.example .env
+      - run: pnpm env:setup
       - run: pnpm generate
       - name: Verify generated client has no drift
-        run: git diff --exit-code -- packages/generated/src/rest.ts
+        run: node scripts/check-generated.mjs
       - run: pnpm check
       - run: pnpm build
       - run: pnpm infra:check
       - run: pnpm infra:up
+      - run: pnpm db:migrate
+      - run: pnpm db:migrate
       - name: Start compiled applications
         run: pnpm start > /tmp/resolvehub-start.log 2>&1 &
       - name: Wait for service readiness

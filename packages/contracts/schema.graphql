@@ -1,0 +1,144 @@
+"RFC 3339 timestamp with an explicit timezone."
+scalar DateTime
+
+"Opaque, authenticated cursor bound to organization, query, filters and snapshot."
+scalar Cursor
+
+enum TicketStatus {
+  open
+  pending
+  resolved
+}
+enum DocumentStatus {
+  queued
+  processing
+  indexed
+  failed
+  superseded
+}
+enum DraftStatus {
+  pending
+  approved
+  rejected
+}
+
+input TicketFilter {
+  status: TicketStatus
+  query: String
+}
+
+type PageInfo {
+  hasNextPage: Boolean!
+  endCursor: Cursor
+}
+
+type Ticket {
+  id: ID!
+  subject: String!
+  customerEmail: String!
+  status: TicketStatus!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  messages: [TicketMessage!]!
+  drafts: [DraftResponse!]!
+}
+
+type TicketMessage {
+  id: ID!
+  body: String!
+  author: String!
+  createdAt: DateTime!
+}
+
+type TicketEdge {
+  cursor: Cursor!
+  node: Ticket!
+}
+type TicketConnection {
+  edges: [TicketEdge!]!
+  pageInfo: PageInfo!
+}
+
+type KnowledgeDocument {
+  id: ID!
+  title: String!
+  status: DocumentStatus!
+  activeVersionId: ID
+  createdAt: DateTime!
+}
+
+type KnowledgeEdge {
+  cursor: Cursor!
+  node: KnowledgeDocument!
+}
+type KnowledgeConnection {
+  edges: [KnowledgeEdge!]!
+  pageInfo: PageInfo!
+}
+
+type KnowledgeMatch {
+  chunkId: ID!
+  documentId: ID!
+  versionId: ID!
+  title: String!
+  excerpt: String!
+  createdAt: DateTime!
+}
+
+type KnowledgeMatchEdge {
+  cursor: Cursor!
+  node: KnowledgeMatch!
+}
+type KnowledgeSearchConnection {
+  edges: [KnowledgeMatchEdge!]!
+  pageInfo: PageInfo!
+}
+
+type Citation {
+  documentId: ID!
+  versionId: ID!
+  chunkId: ID!
+}
+
+type DraftResponse {
+  id: ID!
+  ticketId: ID!
+  text: String!
+  status: DraftStatus!
+  revision: Int!
+  citations: [Citation!]!
+  evidenceValidated: Boolean!
+  model: String!
+  promptVersion: String!
+  reviewedBy: ID
+  reviewedAt: DateTime
+  reviewReason: String
+  createdAt: DateTime!
+}
+
+type DashboardSummary {
+  openTickets: Int!
+  pendingTickets: Int!
+  resolvedTickets: Int!
+  publishedDocuments: Int!
+  pendingReviews: Int!
+  acceptedJobs: Int!
+  failedJobs: Int!
+}
+
+"All queries require verified membership; organization IDs are never query arguments."
+type Query {
+  "Newest first by immutable (createdAt, id), snapshot scoped; first defaults to 20, range 1..100."
+  tickets(first: Int = 20, after: Cursor, filter: TicketFilter): TicketConnection!
+  "Unknown and inaccessible IDs both produce NOT_FOUND with a null result."
+  ticket(id: ID!): Ticket
+  knowledgeDocuments(first: Int = 20, after: Cursor): KnowledgeConnection!
+  "Literal text search of active published chunks only; same stable ordering and page bound as tickets. Vector retrieval arrives later."
+  knowledgeSearch(query: String!, first: Int = 20, after: Cursor): KnowledgeSearchConnection!
+  draft(id: ID!): DraftResponse
+  dashboardSummary: DashboardSummary!
+}
+
+# Mutations are REST commands. Execution errors expose code, message, requestId,
+# and httpStatus in extensions; successful responses include extensions.requestId.
+# Each HTTP response also carries X-Request-ID. Page cursors expire after 24 hours.

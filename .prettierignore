@@ -4,6 +4,7 @@ dist
 .turbo
 pnpm-lock.yaml
 packages/generated/src/rest.ts
+packages/generated/src/graphql
 coverage
 playwright-report
 test-results

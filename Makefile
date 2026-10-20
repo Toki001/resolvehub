@@ -1,7 +1,7 @@
-.PHONY: setup install dev build start check generate up down smoke integration e2e
+.PHONY: setup install dev build start check generate up down migrate smoke integration e2e
 
 setup:
-	@test -f .env || cp .env.example .env
+	pnpm env:setup
 	pnpm install --frozen-lockfile
 
 install:
@@ -12,6 +12,9 @@ up:
 
 down:
 	pnpm infra:down
+
+migrate:
+	pnpm db:migrate
 
 dev:
 	pnpm dev

@@ -24,7 +24,12 @@
     "infra:up": "docker compose up -d --wait",
     "infra:down": "docker compose down",
     "infra:check": "docker compose config --quiet",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm contracts:check && pnpm test",
+    "contracts:check": "tsx scripts/check-contracts.ts",
+    "contracts:drift": "pnpm generate && node scripts/check-generated.mjs",
+    "db:migrate": "turbo run build --filter=@resolvehub/db && dotenv -e .env -- tsx scripts/migrate.ts",
+    "env:setup": "node scripts/setup-env.mjs",
+    "auth:bootstrap": "turbo run build --filter=@resolvehub/db && dotenv -e .env -- tsx scripts/bootstrap-auth.ts"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -46,6 +51,12 @@
     "turbo": "2.11.9",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.2",
-    "zod": "^4.1.12"
+    "zod": "^4.1.12",
+    "@resolvehub/generated": "workspace:*",
+    "@apidevtools/swagger-parser": "^12.1.0",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "graphql": "^16.11.0",
+    "yaml": "^2.8.1"
   }
 }

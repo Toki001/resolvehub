@@ -1,0 +1,120 @@
+query Tickets($first: Int = 20, $after: Cursor, $filter: TicketFilter) {
+  tickets(first: $first, after: $after, filter: $filter) {
+    edges {
+      cursor
+      node {
+        id
+        subject
+        customerEmail
+        status
+        createdAt
+        updatedAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+query TicketDetails($id: ID!) {
+  ticket(id: $id) {
+    id
+    subject
+    customerEmail
+    status
+    createdAt
+    updatedAt
+    messages {
+      id
+      body
+      author
+      createdAt
+    }
+    drafts {
+      id
+      text
+      status
+      revision
+      citations {
+        documentId
+        versionId
+        chunkId
+      }
+    }
+  }
+}
+
+query KnowledgeDocuments($first: Int = 20, $after: Cursor) {
+  knowledgeDocuments(first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        id
+        title
+        status
+        activeVersionId
+        createdAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+query KnowledgeSearch($query: String!, $first: Int = 20, $after: Cursor) {
+  knowledgeSearch(query: $query, first: $first, after: $after) {
+    edges {
+      cursor
+      node {
+        chunkId
+        documentId
+        versionId
+        title
+        excerpt
+        createdAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+
+query DraftResponse($id: ID!) {
+  draft(id: $id) {
+    id
+    ticketId
+    text
+    status
+    revision
+    evidenceValidated
+    model
+    promptVersion
+    citations {
+      documentId
+      versionId
+      chunkId
+    }
+    reviewedBy
+    reviewedAt
+    reviewReason
+    createdAt
+  }
+}
+
+query DashboardSummary {
+  dashboardSummary {
+    openTickets
+    pendingTickets
+    resolvedTickets
+    publishedDocuments
+    pendingReviews
+    acceptedJobs
+    failedJobs
+  }
+}

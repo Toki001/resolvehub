@@ -1,47 +1,1103 @@
 openapi: 3.1.0
 info:
-  title: ResolveHub operational API
-  version: 0.1.0
-  description: Milestone 01 health contract. Authenticated domain contracts arrive in milestone 02.
+  title: ResolveHub API
+  version: 0.2.0
+  description:
+    Contract-first commands for authenticated organizations. Reads use schema-first GraphQL
+    at /graphql. All errors and responses carry a correlation ID. Bodies reject undeclared fields.
+    No client-supplied organization identity is trusted.
 servers:
   - url: http://localhost:3001
+security:
+  - BearerAuth: []
 paths:
   /health/live:
     get:
       operationId: getLiveness
+      security: []
       responses:
         '200':
           description: Process is alive
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
           content:
             application/json:
               schema:
                 type: object
-                required: [status, service]
+                additionalProperties: false
+                required:
+                  - status
+                  - service
                 properties:
-                  status: { type: string, const: alive }
-                  service: { type: string, const: api }
+                  status:
+                    type: string
+                    const: alive
+                  service:
+                    type: string
+                    const: api
   /health/ready:
     get:
       operationId: getReadiness
+      security: []
       responses:
         '200':
-          description: Dependencies are available
+          description: Dependencies and contract migration are ready
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Readiness' }
+              schema:
+                $ref: '#/components/schemas/Readiness'
         '503':
           description: One or more dependencies are unavailable
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Readiness' }
+              schema:
+                $ref: '#/components/schemas/Readiness'
+  /v1/me:
+    get:
+      operationId: getIdentity
+      description:
+        Identity derived from a verified bearer credential joined to an active membership.
+        Tenant headers are not authorization.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Verified organization membership
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Identity'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/tickets:
+    post:
+      operationId: createTicket
+      description:
+        Create a ticket and its initial customer message atomically. Requires admin or agent
+        membership. No organization ID is accepted in the body.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description:
+            Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours.
+            Same method/path and normalized payload replay the original status/body; conflicting
+            reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains
+            its original requestId.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '201':
+          description: Ticket created
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Ticket'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTicketInput'
+  /v1/documents/ingestions:
+    post:
+      operationId: requestDocumentIngestion
+      description: Accept a durable ingestion request for a staged object in the authenticated
+        organization’s namespace. Parsing/indexing is asynchronous; acceptance is not index
+        publication. Requires admin or agent.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description:
+            Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours.
+            Same method/path and normalized payload replay the original status/body; conflicting
+            reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains
+            its original requestId.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '202':
+          description: Ingestion request durably accepted
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Relative resource or job-status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IngestionInput'
+  /v1/tickets/{id}/drafts:
+    post:
+      operationId: requestDraft
+      description:
+        Accept a durable draft request for an accessible ticket. Generation is asynchronous and
+        no reply is sent.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description:
+            Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours.
+            Same method/path and normalized payload replay the original status/body; conflicting
+            reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains
+            its original requestId.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '202':
+          description: Draft request durably accepted
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Relative resource or job-status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/jobs/{id}:
+    get:
+      operationId: getJob
+      description:
+        Return actual tenant-scoped durable job status. Unknown and inaccessible jobs both
+        return 404.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Current job status
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Job'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/jobs/{id}/replay:
+    post:
+      operationId: replayJob
+      description:
+        Admin-only replay of a failed request. Creates a new accepted request and an audit
+        record; the failed request is preserved.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description:
+            Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours.
+            Same method/path and normalized payload replay the original status/body; conflicting
+            reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains
+            its original requestId.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '202':
+          description: Replay durably accepted
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Relative resource or job-status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /v1/drafts/{id}/approve:
+    post:
+      operationId: approveDraft
+      description:
+        Human approval with optimistic revision control. Requires admin or agent and verified
+        citations still belonging to active published knowledge. Approval records a decision; it
+        does not send an outbound reply.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description:
+            Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours.
+            Same method/path and normalized payload replay the original status/body; conflicting
+            reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains
+            its original requestId.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: Audited draft approval
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApproveDraftInput'
+  /v1/drafts/{id}/reject:
+    post:
+      operationId: rejectDraft
+      description:
+        Human rejection with optimistic revision control. Requires admin or agent. Only pending
+        drafts can be reviewed.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: Idempotency-Key
+          required: true
+          description:
+            Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours.
+            Same method/path and normalized payload replay the original status/body; conflicting
+            reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains
+            its original requestId.
+          schema:
+            type: string
+            minLength: 16
+            maxLength: 128
+            pattern: ^[A-Za-z0-9_-]+$
+      responses:
+        '200':
+          description: Audited draft rejection
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Draft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectDraftInput'
+  /v1/webhooks/tickets:
+    post:
+      operationId: receiveTicketWebhook
+      description:
+        Authenticate an active server-side integration using HMAC-SHA256 over timestamp + "." +
+        exact raw request bytes. Reject timestamps outside ±300 seconds, invalid signatures and
+        payloads above 64 KiB before mutation. eventId is mandatory; duplicates replay the receipt
+        and altered reuse returns 409. The integration record determines the tenant; body/header
+        tenant IDs convey no authority.
+      parameters:
+        - in: header
+          name: X-Request-ID
+          required: false
+          description:
+            Optional UUID. Valid values are normalized to lowercase; invalid values are replaced
+            with a fresh correlation ID.
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Webhook-ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: header
+          name: X-Webhook-Timestamp
+          required: true
+          schema:
+            type: string
+            pattern: ^[0-9]{10}$
+        - in: header
+          name: X-Webhook-Signature
+          required: true
+          schema:
+            type: string
+            pattern: ^v1=[a-f0-9]{64}$
+      responses:
+        '202':
+          description: Webhook receipt durably accepted
+          headers:
+            X-Request-ID:
+              description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+              schema:
+                type: string
+                format: uuid
+            Location:
+              description: Relative resource or job-status URL.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedJob'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '413':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookTicketInput'
+      security:
+        - WebhookSignature: []
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description:
+        Opaque expiring API credential; only its SHA-256 digest is stored. Active membership is
+        resolved on every request.
+    WebhookSignature:
+      type: apiKey
+      in: header
+      name: X-Webhook-Signature
+      description: HMAC-SHA256, used with X-Webhook-ID and X-Webhook-Timestamp.
   schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      required:
+        - code
+        - message
+        - requestId
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_INPUT
+            - INVALID_CURSOR
+            - UNAUTHENTICATED
+            - FORBIDDEN
+            - NOT_FOUND
+            - CONFLICT
+            - INVALID_CONTENT
+            - PAYLOAD_TOO_LARGE
+            - CAPACITY_EXCEEDED
+            - DEPENDENCY_UNAVAILABLE
+            - INTERNAL_ERROR
+        message:
+          type: string
+        requestId:
+          type: string
+          format: uuid
+        details:
+          type: object
+          additionalProperties: true
     Readiness:
       type: object
-      required: [status, service, checks]
+      additionalProperties: false
+      required:
+        - status
+        - service
+        - checks
       properties:
-        status: { type: string, enum: [ready, not_ready] }
-        service: { type: string, enum: [api, worker] }
+        status:
+          type: string
+          enum:
+            - ready
+            - not_ready
+        service:
+          type: string
+          enum:
+            - api
+            - worker
         checks:
           type: object
-          additionalProperties: { type: string, enum: [up, down] }
+          additionalProperties:
+            type: string
+            enum:
+              - up
+              - down
+    Identity:
+      type: object
+      additionalProperties: false
+      required:
+        - organizationId
+        - membershipId
+        - subject
+        - role
+      properties:
+        organizationId:
+          type: string
+          format: uuid
+        membershipId:
+          type: string
+          format: uuid
+        subject:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - agent
+            - analyst
+    CreateTicketInput:
+      type: object
+      additionalProperties: false
+      required:
+        - subject
+        - customerEmail
+        - message
+      properties:
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+        customerEmail:
+          type: string
+          format: email
+          maxLength: 254
+        message:
+          type: string
+          minLength: 1
+          maxLength: 20000
+          pattern: \S
+    Ticket:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - subject
+        - customerEmail
+        - status
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        subject:
+          type: string
+          minLength: 1
+          maxLength: 200
+        customerEmail:
+          type: string
+          format: email
+        status:
+          type: string
+          enum:
+            - open
+            - pending
+            - resolved
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Message:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - body
+        - author
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        author:
+          type: string
+          enum:
+            - customer
+            - agent
+        createdAt:
+          type: string
+          format: date-time
+    IngestionInput:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+        - objectKey
+        - mediaType
+        - sizeBytes
+        - sha256
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          pattern: \S
+        objectKey:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^organizations/[0-9a-f-]{36}/uploads/[0-9a-f-]{36}$
+          description:
+            Existing staged object key. The organization namespace must match the authenticated
+            identity; filenames, URLs and traversal segments are not accepted.
+        mediaType:
+          type: string
+          enum:
+            - text/plain
+            - text/markdown
+            - application/pdf
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 10485760
+        sha256:
+          type: string
+          pattern: ^[a-f0-9]{64}$
+    AcceptedJob:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - status
+        - statusUrl
+        - requestId
+      properties:
+        jobId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          const: accepted
+        statusUrl:
+          type: string
+          pattern: ^/v1/jobs/[0-9a-f-]{36}$
+        requestId:
+          type: string
+          format: uuid
+    Job:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - status
+        - resourceId
+        - attempts
+        - reasonCode
+        - requestId
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        kind:
+          type: string
+          enum:
+            - document_ingestion
+            - draft_response
+            - ticket_webhook
+        status:
+          type: string
+          enum:
+            - accepted
+            - processing
+            - succeeded
+            - failed
+            - cancelled
+        resourceId:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        attempts:
+          type: integer
+          minimum: 0
+        reasonCode:
+          anyOf:
+            - type: string
+            - type: 'null'
+        requestId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      description:
+        Durable request state. Milestone 02 records accepted requests; processors arrive in
+        later milestones. accepted is not a claim that work has started.
+    Citation:
+      type: object
+      additionalProperties: false
+      required:
+        - documentId
+        - versionId
+        - chunkId
+      properties:
+        documentId:
+          type: string
+          format: uuid
+        versionId:
+          type: string
+          format: uuid
+        chunkId:
+          type: string
+          format: uuid
+    Draft:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - ticketId
+        - text
+        - status
+        - revision
+        - citations
+        - evidenceValidated
+        - model
+        - promptVersion
+        - reviewedBy
+        - reviewedAt
+        - reviewReason
+        - createdAt
+      properties:
+        id:
+          type: string
+          format: uuid
+        ticketId:
+          type: string
+          format: uuid
+        text:
+          type: string
+          maxLength: 20000
+        status:
+          type: string
+          enum:
+            - pending
+            - approved
+            - rejected
+        revision:
+          type: integer
+          minimum: 1
+        citations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Citation'
+          maxItems: 20
+        evidenceValidated:
+          type: boolean
+        model:
+          type: string
+        promptVersion:
+          type: string
+        reviewedBy:
+          anyOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        reviewedAt:
+          anyOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        reviewReason:
+          anyOf:
+            - type: string
+            - type: 'null'
+        createdAt:
+          type: string
+          format: date-time
+    ApproveDraftInput:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedRevision
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 1
+    RejectDraftInput:
+      type: object
+      additionalProperties: false
+      required:
+        - expectedRevision
+        - reason
+      properties:
+        expectedRevision:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          pattern: \S
+    WebhookTicketInput:
+      type: object
+      additionalProperties: false
+      required:
+        - eventId
+        - ticket
+      properties:
+        eventId:
+          type: string
+          format: uuid
+          description: UUID; case is normalized before event deduplication.
+        ticket:
+          $ref: '#/components/schemas/CreateTicketInput'
+  responses:
+    Error:
+      description:
+        Standard error. GraphQL execution errors use the same code/message/requestId fields in
+        extensions.
+      headers:
+        X-Request-ID:
+          description: Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID.
+          schema:
+            type: string
+            format: uuid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

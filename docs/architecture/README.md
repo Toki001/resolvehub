@@ -1,35 +1,39 @@
 # Architecture and ownership
 
-Milestone 01 establishes process/package boundaries without customer-facing domain endpoints. Next.js 16, NestJS 12 and a standalone BullMQ process run on Node 22; pnpm and Turborepo own dependency and task ordering. Tailwind 4 uses its PostCSS integration. Exact resolved versions are locked in `pnpm-lock.yaml`.
+Milestone 01 established process boundaries; milestone 02 adds authenticated contract APIs and durable handler storage. Next.js 16, NestJS 12 and a separate BullMQ process run on Node 22. pnpm/Turborepo orchestrate shared builds and independent processes. Exact resolved versions are locked in `pnpm-lock.yaml`.
 
 ```mermaid
 flowchart LR
-  Browser --> Web[Next.js web :3000]
-  Web -->|typed REST health client| API[NestJS API :3001]
-  Web -->|server-side readiness| Worker[Worker health :3002]
-  API --> DB[(PostgreSQL + pgvector)]
-  API --> Redis[(Redis)]
-  API --> Storage[MinIO]
-  Probe[CLI smoke probe] --> Redis
-  Redis -->|BullMQ system queue| Worker
+  Browser --> Web[Next.js shell :3000]
+  Web -->|typed health client| API[NestJS API :3001]
+  Web -->|readiness| Worker[Worker :3002]
+  Clients[API clients] -->|Bearer REST commands and GraphQL reads| API
+  Integrations -->|Signed raw webhook| API
+  API -->|scoped repositories and transactions| DB[(PostgreSQL + pgvector)]
+  API -->|dependency health| Redis[(Redis)]
+  API -->|dependency health| Storage[MinIO]
+  Probe[CLI system probe] --> Redis
+  Redis -->|operational BullMQ queue| Worker
 ```
 
-Browser code receives only safe status results. Database, Redis and storage addresses stay in server environment variables. The web status route uses finite timeouts and the generated client; the API performs real dependency checks. The worker has its own readiness server and processes only validated operational probes. No domain payload can enter the system through the probe processor.
+The dashboard continues to expose navigation and safe health results. Customer API credentials are not stored in browser code. Controllers/resolvers delegate to application services; every repository operation uses verified server-derived organization context. Domain requests are persisted as accepted handoffs in PostgreSQL; they are not processed by the operational probe worker.
 
-| Workspace   | Current responsibility                             | Dependency boundary           |
-| ----------- | -------------------------------------------------- | ----------------------------- |
-| `web`       | Routes, shell, live health UI                      | contracts, generated client   |
-| `api`       | HTTP validation, safe errors, dependency readiness | contracts, db                 |
-| `worker`    | Operational BullMQ consumer, readiness, shutdown   | contracts                     |
-| `contracts` | Runtime health/job schemas, OpenAPI source         | no services                   |
-| `generated` | Generated OpenAPI types and client factory         | contracts; no domain logic    |
-| `db`        | Drizzle client and bounded PostgreSQL pool         | no services/web/AI            |
-| `ai`        | Typed draft provider and abstaining mock           | no database or network access |
+| Workspace   | Responsibility                                                   | Boundary                                              |
+| ----------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `web`       | Shell, navigation and live health                                | contracts and generated client; no direct data access |
+| `api`       | Membership, REST/GraphQL, policy, review, webhook verification   | contracts, generated types, scoped db repositories    |
+| `worker`    | System probes, readiness, shutdown                               | contracts; no domain processors yet                   |
+| `contracts` | OpenAPI 3.1, schema-first SDL, operations and health schemas     | no services/database                                  |
+| `generated` | openapi-fetch client and client-preset typed documents           | no business logic                                     |
+| `db`        | Drizzle/pg lifecycle, migrations, scoped SQL and atomic receipts | no services/web/AI                                    |
+| `ai`        | Provider interface and abstaining mock                           | no database/network calls                             |
 
-OpenAPI is the source of REST client types. Zod validates actual network/job input at runtime. The domain contract milestone must add drift/compatibility checks for each domain operation and introduce the canonical GraphQL SDL. The intended schema-first GraphQL adapter is Nest's Apollo adapter on the existing Express transport; resolvers will delegate to the same application services as REST.
+REST requests use canonical OpenAPI JSON Schemas through AJV 2020. Nest's Apollo/Express adapter loads the canonical SDL directly. Both transports share application services, authentication and database policy. Zod validates environmental/operational boundaries and narrow internal inputs. Generation and route/operation checks fail CI on drift; real HTTP tests validate responses against OpenAPI and exercise generated operations.
 
-No tenant data or domain routes exist yet. Before introducing one, implement verified sessions/tokens and organization membership, tenant-scoped application context and repositories, composite keys, isolation tests, and non-disclosing authorization errors. Never derive authority from `organizationId` supplied by clients or queues. The local PostgreSQL bootstrap role is intentionally a development owner; domain migrations must introduce a separate least-privilege runtime role before customer data is stored.
+Opaque expiring credentials are stored only as hashes and joined to active membership on every request. Webhook identity is derived from a server-side integration after raw-byte HMAC verification. No client tenant field grants authority. Page cursors are encrypted/authenticated and bound to organization, operation, filters and a timestamp cutoff. Read ordering is immutable timestamp plus UUID.
 
-Domain idempotency, durable application DLQ, transactional index publication, migrations/seeds and retrieval are future work, not properties demonstrated by the system probe. Redis job-ID deduplication is verified only for operational probes; it is not exactly-once delivery or durable domain idempotency.
+Tenant-scoped idempotency records, payload fingerprints, original receipts, domain changes and audit events commit together. Reviews lock state, check revisions/current published evidence, and record a human actor. Approval does not deliver messages. Knowledge search is literal matching over authorized active versions; vector retrieval and semantic citation validation remain future work.
 
-Configuration is validated independently at each process's startup. The mock AI adapter always abstains and has no external credentials; it is not evidence-grounded generation. Observability collectors, release images and hosting are intentionally reserved for later milestones. No Sites hosting is used for this local Node/TCP-based architecture.
+The [contract persistence/auth decision](decisions/0003-contract-api-persistence-and-auth.md) explains the minimal schema needed for working handlers. Full Drizzle modeling, RLS/least-privilege runtime roles, publication lifecycle and fixtures remain in milestone 03. The Compose owner role is for local development; no production database isolation/deployment claim is made.
+
+Domain BullMQ execution/durable DLQ, grounded AI/evaluations, releases and telemetry retain their original milestones. System probe deduplication is not exactly-once delivery. Configuration fails closed at startup, errors avoid stack/secret leaks, and provider behavior is never replaced with fabricated success.

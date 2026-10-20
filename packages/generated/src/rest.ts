@@ -36,10 +36,173 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Identity derived from a verified bearer credential joined to an active membership. Tenant headers are not authorization. */
+        get: operations["getIdentity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Create a ticket and its initial customer message atomically. Requires admin or agent membership. No organization ID is accepted in the body. */
+        post: operations["createTicket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/documents/ingestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept a durable ingestion request for a staged object in the authenticated organization’s namespace. Parsing/indexing is asynchronous; acceptance is not index publication. Requires admin or agent. */
+        post: operations["requestDocumentIngestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tickets/{id}/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Accept a durable draft request for an accessible ticket. Generation is asynchronous and no reply is sent. */
+        post: operations["requestDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Return actual tenant-scoped durable job status. Unknown and inaccessible jobs both return 404. */
+        get: operations["getJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jobs/{id}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Admin-only replay of a failed request. Creates a new accepted request and an audit record; the failed request is preserved. */
+        post: operations["replayJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/drafts/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Human approval with optimistic revision control. Requires admin or agent and verified citations still belonging to active published knowledge. Approval records a decision; it does not send an outbound reply. */
+        post: operations["approveDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/drafts/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Human rejection with optimistic revision control. Requires admin or agent. Only pending drafts can be reviewed. */
+        post: operations["rejectDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/webhooks/tickets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Authenticate an active server-side integration using HMAC-SHA256 over timestamp + "." + exact raw request bytes. Reject timestamps outside ±300 seconds, invalid signatures and payloads above 64 KiB before mutation. eventId is mandatory; duplicates replay the receipt and altered reuse returns 409. The integration record determines the tenant; body/header tenant IDs convey no authority. */
+        post: operations["receiveTicketWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        Error: {
+            /** @enum {string} */
+            code: "INVALID_INPUT" | "INVALID_CURSOR" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "INVALID_CONTENT" | "PAYLOAD_TOO_LARGE" | "CAPACITY_EXCEEDED" | "DEPENDENCY_UNAVAILABLE" | "INTERNAL_ERROR";
+            message: string;
+            /** Format: uuid */
+            requestId: string;
+            details?: {
+                [key: string]: unknown;
+            };
+        };
         Readiness: {
             /** @enum {string} */
             status: "ready" | "not_ready";
@@ -49,8 +212,135 @@ export interface components {
                 [key: string]: "up" | "down";
             };
         };
+        Identity: {
+            /** Format: uuid */
+            organizationId: string;
+            /** Format: uuid */
+            membershipId: string;
+            subject: string;
+            /** @enum {string} */
+            role: "admin" | "agent" | "analyst";
+        };
+        CreateTicketInput: {
+            subject: string;
+            /** Format: email */
+            customerEmail: string;
+            message: string;
+        };
+        Ticket: {
+            /** Format: uuid */
+            id: string;
+            subject: string;
+            /** Format: email */
+            customerEmail: string;
+            /** @enum {string} */
+            status: "open" | "pending" | "resolved";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Message: {
+            /** Format: uuid */
+            id: string;
+            body: string;
+            /** @enum {string} */
+            author: "customer" | "agent";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        IngestionInput: {
+            title: string;
+            /** @description Existing staged object key. The organization namespace must match the authenticated identity; filenames, URLs and traversal segments are not accepted. */
+            objectKey: string;
+            /** @enum {string} */
+            mediaType: "text/plain" | "text/markdown" | "application/pdf";
+            sizeBytes: number;
+            sha256: string;
+        };
+        AcceptedJob: {
+            /** Format: uuid */
+            jobId: string;
+            /** @constant */
+            status: "accepted";
+            statusUrl: string;
+            /** Format: uuid */
+            requestId: string;
+        };
+        /** @description Durable request state. Milestone 02 records accepted requests; processors arrive in later milestones. accepted is not a claim that work has started. */
+        Job: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "document_ingestion" | "draft_response" | "ticket_webhook";
+            /** @enum {string} */
+            status: "accepted" | "processing" | "succeeded" | "failed" | "cancelled";
+            resourceId: string | null;
+            attempts: number;
+            reasonCode: string | null;
+            /** Format: uuid */
+            requestId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        Citation: {
+            /** Format: uuid */
+            documentId: string;
+            /** Format: uuid */
+            versionId: string;
+            /** Format: uuid */
+            chunkId: string;
+        };
+        Draft: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            ticketId: string;
+            text: string;
+            /** @enum {string} */
+            status: "pending" | "approved" | "rejected";
+            revision: number;
+            citations: components["schemas"]["Citation"][];
+            evidenceValidated: boolean;
+            model: string;
+            promptVersion: string;
+            reviewedBy: string | null;
+            reviewedAt: string | null;
+            reviewReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ApproveDraftInput: {
+            expectedRevision: number;
+        };
+        RejectDraftInput: {
+            expectedRevision: number;
+            reason: string;
+        };
+        WebhookTicketInput: {
+            /**
+             * Format: uuid
+             * @description UUID; case is normalized before event deduplication.
+             */
+            eventId: string;
+            ticket: components["schemas"]["CreateTicketInput"];
+        };
     };
-    responses: never;
+    responses: {
+        /** @description Standard error. GraphQL execution errors use the same code/message/requestId fields in extensions. */
+        Error: {
+            headers: {
+                /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                "X-Request-ID"?: string;
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": components["schemas"]["Error"];
+            };
+        };
+    };
     parameters: never;
     requestBodies: never;
     headers: never;
@@ -70,6 +360,8 @@ export interface operations {
             /** @description Process is alive */
             200: {
                 headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -92,9 +384,11 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Dependencies are available */
+            /** @description Dependencies and contract migration are ready */
             200: {
                 headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
                     [name: string]: unknown;
                 };
                 content: {
@@ -104,12 +398,382 @@ export interface operations {
             /** @description One or more dependencies are unavailable */
             503: {
                 headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["Readiness"];
                 };
             };
+        };
+    };
+    getIdentity: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verified organization membership */
+            200: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Identity"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    createTicket: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                /** @description Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours. Same method/path and normalized payload replay the original status/body; conflicting reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains its original requestId. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTicketInput"];
+            };
+        };
+        responses: {
+            /** @description Ticket created */
+            201: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Ticket"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    requestDocumentIngestion: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                /** @description Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours. Same method/path and normalized payload replay the original status/body; conflicting reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains its original requestId. */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestionInput"];
+            };
+        };
+        responses: {
+            /** @description Ingestion request durably accepted */
+            202: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    /** @description Relative resource or job-status URL. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedJob"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    requestDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                /** @description Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours. Same method/path and normalized payload replay the original status/body; conflicting reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains its original requestId. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Draft request durably accepted */
+            202: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    /** @description Relative resource or job-status URL. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedJob"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    getJob: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Current job status */
+            200: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Job"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    replayJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                /** @description Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours. Same method/path and normalized payload replay the original status/body; conflicting reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains its original requestId. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Replay durably accepted */
+            202: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    /** @description Relative resource or job-status URL. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedJob"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    approveDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                /** @description Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours. Same method/path and normalized payload replay the original status/body; conflicting reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains its original requestId. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveDraftInput"];
+            };
+        };
+        responses: {
+            /** @description Audited draft approval */
+            200: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    rejectDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                /** @description Required for bearer-authenticated mutations. Tenant-scoped, retained at least 24 hours. Same method/path and normalized payload replay the original status/body; conflicting reuse returns 409. Replays get the current attempt’s X-Request-ID header; a job retains its original requestId. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectDraftInput"];
+            };
+        };
+        responses: {
+            /** @description Audited draft rejection */
+            200: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Draft"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
+    receiveTicketWebhook: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Optional UUID. Valid values are normalized to lowercase; invalid values are replaced with a fresh correlation ID. */
+                "X-Request-ID"?: string;
+                "X-Webhook-ID": string;
+                "X-Webhook-Timestamp": string;
+                "X-Webhook-Signature": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookTicketInput"];
+            };
+        };
+        responses: {
+            /** @description Webhook receipt durably accepted */
+            202: {
+                headers: {
+                    /** @description Correlation ID for this HTTP attempt; returned in canonical lowercase for a valid UUID. */
+                    "X-Request-ID"?: string;
+                    /** @description Relative resource or job-status URL. */
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedJob"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
 }

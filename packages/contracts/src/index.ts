@@ -12,6 +12,7 @@ export const errorSchema = z.object({
   code: z.string(),
   message: z.string(),
   requestId: z.uuid(),
+  details: z.record(z.string(), z.unknown()).optional(),
 });
 export type ApiError = z.infer<typeof errorSchema>;
 

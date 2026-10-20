@@ -1,5 +1,5 @@
 # Database package
 
-Exports a bounded `pg` connection pool and Drizzle client; the service owns shutdown. There are no domain tables or migrations in this foundation release. Only the `vector` extension is bootstrapped by local Compose.
+Exports the bounded PostgreSQL/Drizzle connection lifecycle, explicit checksum-aware migration runner and tenant-scoped repositories for milestone 02. Minimal normalized storage supports credentials/membership, tickets/messages, document requests, current knowledge, drafts/reviews, accepted jobs, idempotency receipts and audit history.
 
-The data milestone will add `schema/`, numbered `migrations/` and deterministic `seeds/`, tenant-aware keys/repositories and a migration runner. Do not create customer tables through service startup or the infrastructure bootstrap file.
+Run `pnpm db:migrate`; startup never migrates. Applied SQL must stay immutable. Migrations 0001/0002 establish contract handler persistence and replay/review integrity. Query SQL is parameterized and organization-scoped; composite foreign keys protect relationships. The complete Drizzle schema, least-privilege runtime role/RLS, publication flow, seed corpus and full migration evolution verification remain in milestone 03. See architecture decision 0003 for the bounded persistence introduced here.

@@ -1,6 +1,6 @@
 # Local development operations
 
-Use `make setup`, `make up`, then `make dev`. Read `.env.example` for required service variables. `make setup` preserves an existing `.env`. Environment errors print invalid field names and exit unsuccessfully without printing their values. Restart processes after environment changes.
+Use `make setup`, `make up`, `make migrate`, then `make dev`. Read `.env.example` for required service variables. `make setup` preserves existing environment values and generates a missing API secret privately. See [API operations](contract-apis.md) for provisioning credentials. Environment errors print invalid field names and exit unsuccessfully without printing their values. Restart processes after environment changes.
 
 | Service       | Local URL or port     | Check                                                          |
 | ------------- | --------------------- | -------------------------------------------------------------- |
@@ -20,14 +20,14 @@ API/worker readiness returns HTTP 200 with `status: ready`, or 503 with `status:
 
 - Docker socket unavailable: start Docker Desktop (or your configured Docker daemon) and retry `pnpm infra:up`.
 - First MinIO build is slow: `docker compose --progress plain build minio` shows upstream source/module downloads and compilation. Subsequent builds use the Docker cache. See the source-build decision record for the pinned release.
-- Port occupied: stop the other process; API/worker ports are configurable through `.env`. If changing the web port, update its scripts and `WEB_ORIGIN` together. Do not bind this unauthenticated foundation to public interfaces.
+- Port occupied: stop the other process; API/worker ports are configurable through `.env`. If changing the web port, update its scripts and `WEB_ORIGIN` together. The example infrastructure credentials and network bindings are for local development.
 - A service is unavailable: Settings shows unavailable/unknown status. Start or recover the corresponding Compose service and use Refresh status. There is no mock fallback.
-- Redis restart: BullMQ reconnects and checks readiness again. No domain jobs are accepted in this release.
+- Redis restart: BullMQ reconnects and checks readiness again. Domain requests are durably accepted in PostgreSQL; their processors remain deferred. The probe worker does not process domain requests.
 - Missing pgvector: the extension bootstrap runs only for a new PostgreSQL volume. On an existing local database, apply `infra/docker/postgres-init.sql` using its database owner. Never delete someone else's volume to repair a schema.
 - Invalid configuration: fix the named environment fields and restart. No secrets should be added to logs or verification evidence.
 
 Ctrl+C stops application processes and closes database/Redis/worker resources. `docker compose down` stops containers and preserves data. `docker compose down --volumes` is destructive and is never part of normal setup or verification.
 
-Application migrations are not present in milestone 01. Infrastructure extension bootstrap is idempotent SQL, not a migration runner. Migration 01 and clean/repeated/forward-compatible application migration verification belong to the data milestone. MinIO has no application bucket yet; bucket lifecycle arrives with upload contracts.
+Run numbered contract API migrations with `pnpm db:migrate`. The runner verifies applied checksums and safely skips repeated application. API readiness requires the current contract migration. The PostgreSQL extension bootstrap remains infrastructure setup. Complete schema/publication/fixture work is reserved for the data milestone; MinIO bucket/upload authorization remains future work.
 
-The basic workflow checks local foundation code on GitHub; it does not publish images, deploy a site, or exercise future milestones. Remote GitHub Actions execution must be verified after pushing to a repository.
+The workflow checks contracts, generated drift, code, builds, migrations and real HTTP integration on GitHub; it does not publish images, deploy a site, or exercise future milestones. Remote GitHub Actions execution must be verified after pushing to a repository.
