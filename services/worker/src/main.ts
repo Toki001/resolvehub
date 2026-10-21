@@ -1,3 +1,5 @@
+import { parseDraftConfig } from '@resolvehub/ai';
+import { createDraftRuntime } from './drafting/runtime.js';
 import { createServer } from 'node:http';
 import { Worker } from 'bullmq';
 import { Redis } from 'ioredis';
@@ -15,7 +17,10 @@ import { createIngestionRuntime } from './ingestion/runtime.js';
 
 async function bootstrap(): Promise<void> {
   const env = parseWorkerEnv(process.env);
-  const database = createDatabase(env.DATABASE_URL, { maxConnections: env.WORKER_CONCURRENCY + 2 });
+  const draftConfig = parseDraftConfig(process.env);
+  const database = createDatabase(env.DATABASE_URL, {
+    maxConnections: env.WORKER_CONCURRENCY * 2 + 4,
+  });
   database.pool.on('error', () => console.warn('Worker database connection interrupted'));
   const ingestion = createIngestionRuntime(
     env,
@@ -25,6 +30,7 @@ async function bootstrap(): Promise<void> {
       import.meta.url,
     ),
   );
+  const drafting = createDraftRuntime(env, database.pool, draftConfig);
   const connection = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
     connectTimeout: 2_000,
@@ -89,7 +95,10 @@ async function bootstrap(): Promise<void> {
         redis: results[0]?.status === 'fulfilled' ? ('up' as const) : ('down' as const),
         postgres: results[1]?.status === 'fulfilled' ? ('up' as const) : ('down' as const),
         storage: results[2]?.status === 'fulfilled' ? ('up' as const) : ('down' as const),
-        consumer: worker.isRunning() && ingestion.ready() ? ('up' as const) : ('down' as const),
+        consumer:
+          worker.isRunning() && ingestion.ready() && drafting.ready()
+            ? ('up' as const)
+            : ('down' as const),
       };
       const ready = Object.values(checks).every((status) => status === 'up');
       const body: Readiness = { service: 'worker', status: ready ? 'ready' : 'not_ready', checks };
@@ -104,6 +113,7 @@ async function bootstrap(): Promise<void> {
     void worker
       .close()
       .then(() => ingestion.close())
+      .then(() => drafting.close())
       .then(() => database.pool.end())
       .then(() => {
         connection.disconnect();
@@ -123,7 +133,9 @@ async function bootstrap(): Promise<void> {
 
 bootstrap().catch((error: unknown) => {
   console.error(
-    error instanceof Error && error.message.startsWith('Invalid worker environment:')
+    error instanceof Error &&
+      (error.message.startsWith('Invalid worker environment:') ||
+        error.message.startsWith('Invalid draft configuration:'))
       ? error.message
       : 'Worker startup failed. Check configuration and port availability.',
   );

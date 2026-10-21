@@ -316,6 +316,8 @@ export const draftResponses = pgTable(
     evidenceValidated: boolean('evidence_validated').default(false).notNull(),
     model: text().notNull(),
     promptVersion: text('prompt_version').notNull(),
+    generation: jsonb().$type<unknown>(),
+    sourceJobId: uuid('source_job_id'),
     reviewedBy: uuid('reviewed_by'),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true, precision: 3 }),
     reviewReason: text('review_reason'),
@@ -337,6 +339,11 @@ export const draftResponses = pgTable(
       columns: [t.organizationId, t.reviewedBy],
       foreignColumns: [memberships.organizationId, memberships.id],
     }),
+    foreignKey({
+      columns: [t.organizationId, t.sourceJobId],
+      foreignColumns: [jobRuns.organizationId, jobRuns.id],
+    }),
+    unique('draft_source_job_unique').on(t.organizationId, t.sourceJobId),
     index('drafts_parent').on(t.organizationId, t.ticketId, t.createdAt.desc(), t.id.desc()),
     check('draft_responses_status_check', sql`${t.status} in ('pending','approved','rejected')`),
     check('draft_responses_revision_check', sql`${t.revision}>0`),
@@ -503,6 +510,7 @@ export const jobAttempts = pgTable(
     errorCategory: text('error_category'),
     summary: text(),
     startedAt: timestamp('started_at', { withTimezone: true, precision: 3 }).defaultNow().notNull(),
+    usage: jsonb().$type<unknown>(),
     finishedAt: timestamp('finished_at', { withTimezone: true, precision: 3 }),
   },
   (t) => [

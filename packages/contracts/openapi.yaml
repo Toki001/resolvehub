@@ -1199,6 +1199,110 @@ components:
         chunkId:
           type: string
           format: uuid
+        quote:
+          type: string
+          minLength: 12
+          maxLength: 1000
+        reference:
+          type: string
+          pattern: '^\[[1-5]\]$'
+    DraftGeneration:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          accountedAttempts,
+          usageIncomplete,
+          outcome,
+          abstentionReason,
+          provider,
+          model,
+          embeddingModel,
+          promptVersion,
+          inputTokens,
+          outputTokens,
+          embeddingTokens,
+          tokenCountSource,
+          estimatedCostUsd,
+          pricing,
+          retrievalLatencyMs,
+          generationLatencyMs,
+          totalLatencyMs,
+          generatedAt,
+          retrievalMode,
+        ]
+      properties:
+        accountedAttempts:
+          type: integer
+          minimum: 0
+        usageIncomplete:
+          type: boolean
+        outcome:
+          type: string
+          enum: [answer, insufficient_evidence]
+        abstentionReason:
+          type: [string, 'null']
+        provider:
+          type: string
+          enum: [mock, ollama]
+        model:
+          type: string
+        embeddingModel:
+          type: string
+        promptVersion:
+          type: string
+        inputTokens:
+          type: integer
+          minimum: 0
+        outputTokens:
+          type: integer
+          minimum: 0
+        embeddingTokens:
+          type: integer
+          minimum: 0
+        tokenCountSource:
+          type: string
+          enum: [mock_estimate, provider_reported]
+        estimatedCostUsd:
+          type: number
+          minimum: 0
+        pricing:
+          type: object
+          additionalProperties: false
+          required:
+            [inputUsdPerMillion, outputUsdPerMillion, embeddingUsdPerMillion, effectiveDate, source]
+          properties:
+            inputUsdPerMillion:
+              type: number
+              minimum: 0
+            outputUsdPerMillion:
+              type: number
+              minimum: 0
+            embeddingUsdPerMillion:
+              type: number
+              minimum: 0
+            effectiveDate:
+              type: string
+              format: date
+            source:
+              type: string
+              enum: [mock, operator_configured]
+        retrievalLatencyMs:
+          type: number
+          minimum: 0
+        generationLatencyMs:
+          type: number
+          minimum: 0
+        totalLatencyMs:
+          type: number
+          minimum: 0
+        generatedAt:
+          type: string
+          format: date-time
+        retrievalMode:
+          type: string
+          enum: [hybrid, hybrid_lexical_rerank]
+
     Draft:
       type: object
       additionalProperties: false
@@ -1217,6 +1321,10 @@ components:
         - reviewReason
         - createdAt
       properties:
+        generation:
+          anyOf:
+            - $ref: '#/components/schemas/DraftGeneration'
+            - type: 'null'
         id:
           type: string
           format: uuid

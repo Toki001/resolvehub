@@ -37,9 +37,9 @@ Canonical definitions are in `packages/contracts/openapi.yaml`. All bearer mutat
 | `POST /v1/drafts/{id}/reject`      | 200; audited rejection with reason and expected revision                                |
 | `POST /v1/webhooks/tickets`        | Signed integration authentication; 202 receipt with event deduplication                 |
 
-An ingestion object key must be exactly `organizations/<authenticated-organization-id>/uploads/<uuid>`. Arbitrary URLs, traversal and other organization namespaces are rejected. The caller stages bytes through an authorized storage flow; this milestone does not issue upload URLs. The later ingestion worker validates object existence, size, MIME and hash. Document ingestion is now processed by the milestone 04 worker; see [ingestion and recovery](ingestion-recovery.md). Draft and webhook domain requests remain accepted until their processors are implemented.
+An ingestion object key must be exactly `organizations/<authenticated-organization-id>/uploads/<uuid>`. Arbitrary URLs, traversal and other organization namespaces are rejected. The caller stages bytes through an authorized storage flow; this milestone does not issue upload URLs. The ingestion worker validates object existence, size, MIME and hash. Document ingestion is now processed by the milestone 04 worker; see [ingestion and recovery](ingestion-recovery.md). Draft jobs are processed by the milestone 06 worker; webhook domain processing remains deferred.
 
-Approval never sends a reply. It requires a pending draft, matching revision, a previously validated evidence flag and at least one citation still belonging to an active published version. Absent, stale or cross-tenant evidence returns 422. Repeated decisions with a new key conflict with the current state; retries with the original key replay the receipt. Draft creation/generation itself is deferred.
+Approval never sends a reply. It requires a pending draft, matching revision, a previously validated evidence flag and at least one citation still belonging to an active published version. Absent, stale or cross-tenant evidence returns 422. Repeated decisions with a new key conflict with the current state; retries with the original key replay the receipt. Generated drafts remain pending human review; see [AI drafting operations](ai-drafting.md).
 
 Example with a credential obtained above:
 
@@ -77,7 +77,7 @@ GraphQL execution errors use `errors[].extensions.{code,message,requestId,httpSt
 
 - `pnpm check`: format, lint, strict types, OpenAPI/SDL validation, exact REST controller inventory, unit/contract tests.
 - `pnpm contracts:drift`: regenerate then fail on changed, deleted or untracked generated sources. Intended new generated files must be staged before running the local check. CI checks the committed outputs.
-- `pnpm test:integration`: real running API/worker and PostgreSQL; creates isolated synthetic organizations and removes them afterward.
+- `pnpm test:integration`: isolated Testcontainers, real Nest API/worker and PostgreSQL; creates synthetic organizations and removes them afterward.
 - `pnpm build`, then `pnpm start`: compiled local stack, with production Node mode.
 
-Run migrations before startup; readiness requires the current contract migration. The migration runner checks applied SQL checksums and supports repeated runs. Never edit an applied migration. Use additive follow-up SQL and preserve idempotency/audit records. No automatic retention/pruning, public auth management API or outbound messaging is supplied. Later milestones added full persistence, fixtures and tenant policies; milestone 04 supplies the document worker and durable DLQ. Legacy draft/webhook processors remain deferred.
+Run migrations before startup; readiness requires the current contract migration. The migration runner checks applied SQL checksums and supports repeated runs. Never edit an applied migration. Use additive follow-up SQL and preserve idempotency/audit records. No automatic retention/pruning, public auth management API or outbound messaging is supplied. Later milestones added full persistence, fixtures and tenant policies; milestone 04 supplies the document worker and durable DLQ. Milestone 06 supplies evidence-bound draft jobs; webhook domain processing and outbound delivery remain deferred. See [AI drafting](ai-drafting.md).

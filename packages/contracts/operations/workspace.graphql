@@ -95,10 +95,39 @@ query DraftResponse($id: ID!) {
     evidenceValidated
     model
     promptVersion
+    generation {
+      accountedAttempts
+      usageIncomplete
+      outcome
+      abstentionReason
+      provider
+      model
+      embeddingModel
+      promptVersion
+      inputTokens
+      outputTokens
+      embeddingTokens
+      tokenCountSource
+      estimatedCostUsd
+      retrievalLatencyMs
+      generationLatencyMs
+      totalLatencyMs
+      generatedAt
+      retrievalMode
+      pricing {
+        inputUsdPerMillion
+        outputUsdPerMillion
+        embeddingUsdPerMillion
+        effectiveDate
+        source
+      }
+    }
     citations {
       documentId
       versionId
       chunkId
+      quote
+      reference
     }
     reviewedBy
     reviewedAt

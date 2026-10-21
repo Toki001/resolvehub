@@ -7,7 +7,11 @@ import { configureApplication } from '../../services/api/src/configure.js';
 
 // These suites exercise the real Nest guards/controllers/resolvers/filter and DB.
 // Only configuration is overridden; domain providers and authorization stay real.
-if (/\/(support|health|ingestion-http)\.test\.ts$/.test(expect.getState().testPath ?? '')) {
+if (
+  /\/(support|health|ingestion-http|drafting-http)\.test\.ts$/.test(
+    expect.getState().testPath ?? '',
+  )
+) {
   const env = parseApiEnv(process.env);
   const module = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(API_ENV)

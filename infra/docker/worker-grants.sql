@@ -11,3 +11,9 @@ GRANT SELECT,UPDATE ON knowledge_documents,document_versions,job_runs TO resolve
 GRANT SELECT,INSERT,UPDATE ON knowledge_chunks,job_attempts TO resolvehub_worker;
 GRANT SELECT,INSERT ON ingestion_artifacts,failed_jobs,audit_events TO resolvehub_worker;
 GRANT EXECUTE ON FUNCTION ingestion_dispatch_candidates() TO resolvehub_worker;
+
+GRANT SELECT ON tickets,ticket_messages TO resolvehub_worker;
+GRANT SELECT,INSERT ON draft_responses TO resolvehub_worker;
+GRANT SELECT,INSERT,UPDATE,DELETE ON citations TO resolvehub_worker;
+GRANT EXECUTE ON FUNCTION drafting_dispatch_candidates() TO resolvehub_worker;
+GRANT EXECUTE ON FUNCTION drafting_lock_authority(uuid,uuid) TO resolvehub_worker;

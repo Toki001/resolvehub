@@ -98,6 +98,8 @@ type Citation {
   documentId: ID!
   versionId: ID!
   chunkId: ID!
+  quote: String
+  reference: String
 }
 
 type DraftResponse {
@@ -110,6 +112,7 @@ type DraftResponse {
   evidenceValidated: Boolean!
   model: String!
   promptVersion: String!
+  generation: DraftGeneration
   reviewedBy: ID
   reviewedAt: DateTime
   reviewReason: String
@@ -142,3 +145,33 @@ type Query {
 # Mutations are REST commands. Execution errors expose code, message, requestId,
 # and httpStatus in extensions; successful responses include extensions.requestId.
 # Each HTTP response also carries X-Request-ID. Page cursors expire after 24 hours.
+
+type DraftPricing {
+  inputUsdPerMillion: Float!
+  outputUsdPerMillion: Float!
+  embeddingUsdPerMillion: Float!
+  effectiveDate: String!
+  source: String!
+}
+
+type DraftGeneration {
+  accountedAttempts: Int!
+  usageIncomplete: Boolean!
+  outcome: String!
+  abstentionReason: String
+  provider: String!
+  model: String!
+  embeddingModel: String!
+  promptVersion: String!
+  inputTokens: Int!
+  outputTokens: Int!
+  embeddingTokens: Int!
+  tokenCountSource: String!
+  estimatedCostUsd: Float!
+  pricing: DraftPricing!
+  retrievalLatencyMs: Float!
+  generationLatencyMs: Float!
+  totalLatencyMs: Float!
+  generatedAt: DateTime!
+  retrievalMode: String!
+}

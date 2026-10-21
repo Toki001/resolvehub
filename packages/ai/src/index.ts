@@ -1,33 +1,3 @@
-export interface DraftInput {
-  organizationId: string;
-  question: string;
-  evidence: ReadonlyArray<{ chunkId: string; text: string }>;
-}
-
-export interface DraftResult {
-  kind: 'insufficient_evidence';
-  text: string;
-  citations: readonly string[];
-  provider: 'mock';
-}
-
-export interface DraftProvider {
-  draft(input: DraftInput): Promise<DraftResult>;
-}
-
-// Deliberately abstains until retrieval and citation validation are implemented.
-// No external network calls, fabricated evidence, or claimed confidence scores.
-export class MockDraftProvider implements DraftProvider {
-  async draft(_input: DraftInput): Promise<DraftResult> {
-    return {
-      kind: 'insufficient_evidence',
-      text: 'Evidence-grounded drafting is not configured.',
-      citations: [],
-      provider: 'mock',
-    };
-  }
-}
-
 export {
   SyntheticEmbeddingProvider,
   syntheticEmbedding,
@@ -37,3 +7,8 @@ export {
 export type { EmbeddingProvider } from './embedding.js';
 
 export { EmbeddingProviderError } from './provider-error.js';
+
+export * from './drafting/config.js';
+export * from './drafting/evidence.js';
+export * from './drafting/provider.js';
+export * from './drafting/pipeline.js';

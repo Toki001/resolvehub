@@ -358,8 +358,45 @@ export interface components {
             versionId: string;
             /** Format: uuid */
             chunkId: string;
+            quote?: string;
+            reference?: string;
+        };
+        DraftGeneration: {
+            accountedAttempts: number;
+            usageIncomplete: boolean;
+            /** @enum {string} */
+            outcome: "answer" | "insufficient_evidence";
+            abstentionReason: string | null;
+            /** @enum {string} */
+            provider: "mock" | "ollama";
+            model: string;
+            embeddingModel: string;
+            promptVersion: string;
+            inputTokens: number;
+            outputTokens: number;
+            embeddingTokens: number;
+            /** @enum {string} */
+            tokenCountSource: "mock_estimate" | "provider_reported";
+            estimatedCostUsd: number;
+            pricing: {
+                inputUsdPerMillion: number;
+                outputUsdPerMillion: number;
+                embeddingUsdPerMillion: number;
+                /** Format: date */
+                effectiveDate: string;
+                /** @enum {string} */
+                source: "mock" | "operator_configured";
+            };
+            retrievalLatencyMs: number;
+            generationLatencyMs: number;
+            totalLatencyMs: number;
+            /** Format: date-time */
+            generatedAt: string;
+            /** @enum {string} */
+            retrievalMode: "hybrid" | "hybrid_lexical_rerank";
         };
         Draft: {
+            generation?: components["schemas"]["DraftGeneration"] | null;
             /** Format: uuid */
             id: string;
             /** Format: uuid */

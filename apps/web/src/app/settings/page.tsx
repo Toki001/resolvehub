@@ -21,7 +21,7 @@ export default function Settings() {
         <div>
           <h2>ResolveHub workspace</h2>
           <p>
-            Foundation release <span>·</span> Version 0.1.0
+            Support platform preview <span>·</span> Version 0.1.0
           </p>
         </div>
         <span className="outline-badge">Development</span>
@@ -34,10 +34,10 @@ export default function Settings() {
       >
         <div className="list-heading">
           <div>
-            <h2 id="milestone-title">Workspace foundation</h2>
-            <p>Milestone 01 establishes the services and interface for the platform.</p>
+            <h2 id="milestone-title">Workspace availability</h2>
+            <p>Milestone 06 adds cited support drafts with mandatory human review.</p>
           </div>
-          <span className="milestone-badge">01 / 08</span>
+          <span className="milestone-badge">06 / 08</span>
         </div>
         <div className="milestone-grid">
           <div>
@@ -55,30 +55,31 @@ export default function Settings() {
             ))}
           </div>
           <div>
-            <h3>Next: contracts and access</h3>
+            <h3>Available through authorized integrations</h3>
             <p>
               <ArrowRight size={15} />
               Verified organization membership
             </p>
             <p>
               <ArrowRight size={15} />
-              Typed, authenticated API operations
+              Ticket intake and document indexing
             </p>
             <p>
               <ArrowRight size={15} />
-              Tenant-aware ticket workflows
+              Cited drafts and explicit abstention
             </p>
             <p>
               <ArrowRight size={15} />
-              Pagination and idempotency
+              Audited human approval
             </p>
           </div>
         </div>
         <div className="scope-note">
           <LockKeyhole size={16} />
           <p>
-            Authentication, tenant data, uploads, AI drafting, and customer messaging are not
-            enabled in this milestone. This workspace contains no customer records.
+            Dashboard sign-in, customer records, uploads and review are not connected here. Support
+            drafts remain pending until an authorized reviewer approves them. Customer messaging is
+            not enabled.
           </p>
         </div>
       </section>

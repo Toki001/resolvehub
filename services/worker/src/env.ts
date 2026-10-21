@@ -22,6 +22,7 @@ const schema = z.object({
     .string()
     .regex(/^[a-z0-9_-]{1,60}$/)
     .default('resolvehub'),
+  DRAFT_REQUESTS_PER_SECOND: z.coerce.number().int().min(1).max(100).default(10),
   AI_PROVIDER: z.literal('mock'),
 });
 export type WorkerEnv = z.infer<typeof schema>;

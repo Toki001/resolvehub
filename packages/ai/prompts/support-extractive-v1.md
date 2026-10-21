@@ -1,0 +1,3 @@
+# resolvehub-support-extractive-v1
+
+The executable system prompt is exported as `SYSTEM_PROMPT`. Ticket and evidence are JSON data. Providers select exact source quotations and immutable chunk identifiers. The validator independently reconstructs rendered references and rejects paraphrases, unknown sources, repeated sources, or invented claims. This intentionally conservative mode does not assert semantic entailment for arbitrary generated prose. Human review is mandatory; generation never sends a message. Changing the executable prompt or evidence rules requires a new prompt version and evaluation report.

@@ -163,7 +163,14 @@ export class SupportService {
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, `POST /v1/tickets/${id}/drafts`, {}, async (repository) => {
       if (!(await repository.ticket(id))) throw notFound();
-      const jobId = await repository.createJob('draft_response', id, { ticketId: id }, requestId);
+      const jobId = await repository.createJob(
+        'draft_response',
+        id,
+        { ticketId: id },
+        requestId,
+        null,
+        identity.membershipId,
+      );
       await repository.audit(actor, 'draft.requested', jobId);
       return this.accepted(jobId, requestId);
     });
@@ -186,7 +193,11 @@ export class SupportService {
       if (draft.status !== 'pending' || draft.revision !== input.expectedRevision)
         throw new StoreConflict('state');
       if (action === 'approve') {
-        if (!draft.evidenceValidated || draft.citations.length === 0)
+        if (
+          !draft.evidenceValidated ||
+          draft.citations.length === 0 ||
+          (draft.generation && draft.generation.outcome !== 'answer')
+        )
           throw new StoreConflict('evidence');
         for (const citation of draft.citations) {
           if (!(await repository.activeCitation(citation))) throw new StoreConflict('evidence');

@@ -20,7 +20,7 @@ const sections = {
     listDescription: 'Your team’s conversations will live here.',
     emptyTitle: 'Ready for your first conversation',
     emptyText:
-      'Ticket intake is not available in this foundation release. Customer conversations will be connected in milestone 02.',
+      'Ticket intake is available through authorized integrations. Dashboard sign-in and conversation access are not connected yet.',
     icon: Inbox,
     columns: ['Conversation', 'Customer', 'Status', 'Updated'],
     next: 'Authenticated ticket intake',
@@ -34,7 +34,7 @@ const sections = {
     listDescription: 'Verified knowledge, ready for your team.',
     emptyTitle: 'Make room for what your team knows',
     emptyText:
-      'Document uploads are not enabled in this release. Your team’s published knowledge will appear here when ingestion is connected.',
+      'Document indexing is available through authorized integrations. Dashboard uploads and knowledge access are not connected yet.',
     icon: BookOpen,
     columns: ['Document', 'Source', 'Status', 'Updated'],
     next: 'Versioned documents and ingestion',
@@ -48,7 +48,7 @@ const sections = {
     listDescription: 'Every response deserves a human perspective.',
     emptyTitle: 'A space for a second look',
     emptyText:
-      'AI drafts are not available in this release. Once connected, responses will appear here for your team to review and approve.',
+      'Cited support drafts and human approval are available through authorized integrations. Dashboard review access is not connected yet.',
     icon: CheckCheck,
     columns: ['Draft', 'Ticket', 'Evidence', 'Created'],
     next: 'Cited drafts and human approval',
@@ -78,7 +78,10 @@ export function WorkspacePage({ section }: { section: keyof typeof sections }) {
         </span>
         <div>
           <strong>Your workspace is taking shape</strong>
-          <p>The foundation is in place. Customer workflows are coming in the next milestones.</p>
+          <p>
+            Support workflows are available through authorized integrations. Dashboard access is not
+            connected yet.
+          </p>
         </div>
         <Link href="/settings#milestone">
           See what’s connected <ArrowRight size={16} />
@@ -90,7 +93,7 @@ export function WorkspacePage({ section }: { section: keyof typeof sections }) {
             <h2 id="list-title">{content.listTitle}</h2>
             <p>{content.listDescription}</p>
           </div>
-          <span className="subtle-label">Not connected yet</span>
+          <span className="subtle-label">Dashboard access unavailable</span>
         </div>
         <div className="table-heading" aria-hidden="true">
           {content.columns.map((column) => (
@@ -117,9 +120,9 @@ export function WorkspacePage({ section }: { section: keyof typeof sections }) {
         <div className="list-footer">
           <span>
             <LockKeyhole size={13} />
-            No customer data is loaded in this foundation release.
+            Dashboard records are not connected.
           </span>
-          <span>Milestone 01</span>
+          <span>Milestone 06</span>
         </div>
       </section>
       <div className="info-grid">

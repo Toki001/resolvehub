@@ -54,6 +54,8 @@ jobs:
             coverage/
             test-results/jest-results.json
             test-results/worker.log
+            test-results/ai-evaluation.json
+            test-results/ai-http-benchmark.json
           if-no-files-found: warn
           retention-days: 14
       - name: Stop infrastructure

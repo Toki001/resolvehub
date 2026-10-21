@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { processProbe } from '../../services/worker/src/probe.js';
-import { MockDraftProvider } from '../../packages/ai/src/index.js';
+import { ExtractiveMockProvider } from '../../packages/ai/src/index.js';
 
 test('operational probe preserves its correlation ID', () => {
   const requestId = randomUUID();
@@ -20,12 +20,15 @@ test('worker refuses unregistered jobs or payloads with arbitrary fields', () =>
 });
 
 test('mock AI abstains without inventing citations', async () => {
-  const provider = new MockDraftProvider();
-  const result = await provider.draft({
-    organizationId: randomUUID(),
-    question: 'What is the policy?',
-    evidence: [],
-  });
-  expect(result.kind).toBe('insufficient_evidence');
-  expect(result.citations).toEqual([]);
+  const provider = new ExtractiveMockProvider();
+  const result = await provider.generate(
+    {
+      prompt: 'Synthetic test',
+      question: 'What is the policy?',
+      evidence: [],
+      maxOutputTokens: 512,
+    },
+    new AbortController().signal,
+  );
+  expect(result.output).toEqual({ kind: 'insufficient_evidence', claims: [] });
 });

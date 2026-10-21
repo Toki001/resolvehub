@@ -34,8 +34,8 @@ export class StoreConflict extends Error {
 const ticketJson = `jsonb_build_object('id',t.id,'subject',t.subject,'customerEmail',t.customer_email,
   'status',t.status,'createdAt',t.created_at,'updatedAt',t.updated_at)`;
 const draftJson = `jsonb_build_object('id',d.id,'ticketId',d.ticket_id,'text',d.text,'status',d.status,
-  'revision',d.revision,'citations',(SELECT coalesce(jsonb_agg(jsonb_build_object('documentId',e.document_id,'versionId',e.version_id,'chunkId',e.chunk_id) ORDER BY e.position),'[]'::jsonb) FROM citations e WHERE e.organization_id=d.organization_id AND e.draft_id=d.id),'evidenceValidated',d.evidence_validated,
-  'model',d.model,'promptVersion',d.prompt_version,'reviewedBy',d.reviewed_by,
+  'revision',d.revision,'citations',(SELECT coalesce(jsonb_agg((jsonb_build_object('documentId',e.document_id,'versionId',e.version_id,'chunkId',e.chunk_id) || CASE WHEN e.quote IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('quote',e.quote,'reference','['||(e.position+1)::text||']') END) ORDER BY e.position),'[]'::jsonb) FROM citations e WHERE e.organization_id=d.organization_id AND e.draft_id=d.id),'evidenceValidated',d.evidence_validated,
+  'model',d.model,'promptVersion',d.prompt_version,'generation',d.generation,'reviewedBy',d.reviewed_by,
   'reviewedAt',d.reviewed_at,'reviewReason',d.review_reason,'createdAt',d.created_at)`;
 const jobJson = `jsonb_build_object('id',j.id,'kind',j.kind,'status',j.status,'resourceId',j.resource_id,
   'attempts',j.attempts,'reasonCode',j.reason_code,'requestId',j.request_id,'createdAt',j.created_at,'updatedAt',j.updated_at)`;
@@ -237,14 +237,23 @@ export class TenantRepository {
     documentId: string;
     versionId: string;
     chunkId: string;
+    quote?: string;
   }): Promise<boolean> {
     const result = await this.connection.query(
       `SELECT c.id FROM knowledge_chunks c JOIN knowledge_documents d ON d.organization_id=c.organization_id
        AND d.id=c.document_id AND d.active_version_id=c.version_id
+       JOIN document_versions v ON v.organization_id=c.organization_id AND v.id=c.version_id AND v.document_id=c.document_id
        WHERE c.organization_id=$1 AND c.id=$2 AND c.document_id=$3 AND c.version_id=$4
        AND d.status='indexed' AND d.deleted_at IS NULL AND c.deleted_at IS NULL
-       AND EXISTS (SELECT 1 FROM document_versions v WHERE v.organization_id=c.organization_id AND v.id=c.version_id AND v.status='indexed' AND v.deleted_at IS NULL) FOR SHARE OF c,d`,
-      [this.organizationId, citation.chunkId, citation.documentId, citation.versionId],
+       AND ($5::text IS NULL OR strpos(c.text,$5)>0)
+       AND v.status='indexed' AND v.deleted_at IS NULL FOR SHARE OF c,d,v`,
+      [
+        this.organizationId,
+        citation.chunkId,
+        citation.documentId,
+        citation.versionId,
+        citation.quote ?? null,
+      ],
     );
     return result.rowCount === 1;
   }
@@ -356,6 +365,13 @@ export class TenantRepository {
       [this.organizationId, id],
     );
     if (child.rowCount) throw new StoreConflict('state');
+    if (job.kind === 'draft_response') {
+      const denied = await this.connection.query(
+        'SELECT id FROM failed_jobs WHERE organization_id=$1 AND job_id=$2 AND (NOT replay_eligible OR replayed_as IS NOT NULL) FOR UPDATE',
+        [this.organizationId, id],
+      );
+      if (denied.rowCount) throw new StoreConflict('state');
+    }
     if (job.kind === 'document_ingestion') {
       const failure = await this.connection.query(
         'SELECT id FROM failed_jobs WHERE organization_id=$1 AND job_id=$2 AND replay_eligible AND replayed_as IS NULL FOR UPDATE',
@@ -381,7 +397,7 @@ export class TenantRepository {
       id,
       requestedBy,
     );
-    if (job.kind === 'document_ingestion')
+    if (['document_ingestion', 'draft_response'].includes(job.kind))
       await this.connection.query(
         'UPDATE failed_jobs SET replayed_as=$3 WHERE organization_id=$1 AND job_id=$2',
         [this.organizationId, id, jobId],

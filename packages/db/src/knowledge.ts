@@ -74,6 +74,43 @@ export class KnowledgeRepository {
     });
   }
 
+  // Hybrid candidates retain the pgvector channel while lexical ranking makes
+  // the explicitly synthetic embedding profile usable without semantic claims.
+  async search(question: string, embedding: readonly number[], first = 20) {
+    const vector = validateVector(embedding);
+    z.number().int().min(1).max(40).parse(first);
+    const words = [...new Set((question.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []).slice(0, 64))];
+    const query = words.join(' OR ');
+    return tenantDrizzle(this.pool, this.organizationId, async (db) => {
+      const result = await db.execute<{
+        organizationId: string;
+        documentId: string;
+        versionId: string;
+        chunkId: string;
+        title: string;
+        text: string;
+        distance: number;
+        lexicalRank: number;
+      }>(sql`
+        WITH candidates AS MATERIALIZED (
+          SELECT c.organization_id,c.document_id,c.version_id,c.id chunk_id,d.title,c.text,
+            c.embedding OPERATOR(public.<=>) ${JSON.stringify(vector)}::public.vector distance,
+            ts_rank_cd(to_tsvector('english',c.text),websearch_to_tsquery('english',${query}))::float8 lexical_rank
+          FROM knowledge_chunks c
+          JOIN knowledge_documents d ON d.organization_id=c.organization_id AND d.id=c.document_id AND d.active_version_id=c.version_id
+          JOIN document_versions v ON v.organization_id=c.organization_id AND v.document_id=c.document_id AND v.id=c.version_id
+          WHERE c.organization_id=${this.organizationId}::uuid AND c.deleted_at IS NULL AND d.deleted_at IS NULL AND v.deleted_at IS NULL
+            AND d.status='indexed' AND v.status='indexed' AND c.embedding IS NOT NULL AND c.embedding_model=${EMBEDDING_MODEL}
+            AND EXISTS(SELECT 1 FROM organizations o WHERE o.id=c.organization_id AND o.deleted_at IS NULL)
+        ), vector_channel AS (SELECT chunk_id FROM candidates ORDER BY distance,chunk_id LIMIT ${first}),
+        lexical_channel AS (SELECT chunk_id FROM candidates WHERE lexical_rank>0 ORDER BY lexical_rank DESC,chunk_id LIMIT ${first})
+        SELECT organization_id AS "organizationId",document_id AS "documentId",version_id AS "versionId",chunk_id AS "chunkId",title,text,distance,lexical_rank AS "lexicalRank"
+        FROM candidates WHERE chunk_id IN(SELECT chunk_id FROM vector_channel UNION SELECT chunk_id FROM lexical_channel)
+        ORDER BY lexical_rank DESC,distance,chunk_id LIMIT ${first}`);
+      return result.rows;
+    });
+  }
+
   async publish(documentId: string, versionId: string, actor: Actor) {
     this.assertActor(actor);
     return tenantDrizzle(this.pool, this.organizationId, async (db) => {

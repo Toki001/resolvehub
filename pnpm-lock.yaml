@@ -318,7 +318,11 @@ importers:
         specifier: ^4.1.16
         version: 4.3.3
 
-  packages/ai: {}
+  packages/ai:
+    dependencies:
+      zod:
+        specifier: ^4.1.12
+        version: 4.6.7
 
   packages/contracts:
     dependencies:

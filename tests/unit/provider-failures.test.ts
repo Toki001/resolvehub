@@ -1,6 +1,6 @@
 import {
   EmbeddingProviderError,
-  MockDraftProvider,
+  ExtractiveMockProvider,
   SyntheticEmbeddingProvider,
 } from '@resolvehub/ai';
 import {
@@ -63,10 +63,17 @@ test('mock AI abstains, rejects malformed embedding batches and observes cancell
   controller.abort();
   await expect(provider.embed(['text'], controller.signal)).rejects.toThrow();
   expect(
-    await new MockDraftProvider().draft({
-      organizationId: 'synthetic',
-      question: 'Unverified?',
-      evidence: [],
-    }),
-  ).toMatchObject({ kind: 'insufficient_evidence', citations: [], provider: 'mock' });
+    await new ExtractiveMockProvider().generate(
+      {
+        prompt: 'Synthetic test',
+        question: 'Unverified?',
+        evidence: [],
+        maxOutputTokens: 512,
+      },
+      new AbortController().signal,
+    ),
+  ).toMatchObject({
+    output: { kind: 'insufficient_evidence', claims: [] },
+    tokenCountSource: 'mock_estimate',
+  });
 });

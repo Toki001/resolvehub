@@ -1,0 +1,315 @@
+{
+  "evaluation": {
+    "fixtureDigest": "01a5a9b8ed414977187300b8ac56fcc62a5c7a87ecb2761ca44b5d4a1bc74eb5",
+    "generatedAt": "2026-10-21T01:09:58.658Z",
+    "environment": {
+      "node": "v22.22.3",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Pro",
+      "postgres": "17/pgvector",
+      "concurrency": 10
+    },
+    "provider": "mock",
+    "model": "resolvehub-extractive-mock-v1",
+    "embeddingModel": "resolvehub-synthetic-sha256-v1",
+    "retrievalMode": "hybrid_lexical_rerank",
+    "pricing": {
+      "inputUsdPerMillion": 0,
+      "outputUsdPerMillion": 0,
+      "effectiveDate": "2026-10-21",
+      "source": "deterministic mock; no API charges; not a live price estimate"
+    },
+    "cases": 60,
+    "corpusVersions": 136,
+    "splits": {
+      "answerable": {
+        "recallAt5": {
+          "numerator": 30,
+          "denominator": 30,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8864829086095221,
+            "upper": 1
+          }
+        },
+        "supportedClaims": {
+          "numerator": 30,
+          "denominator": 30,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8864829086095221,
+            "upper": 1
+          }
+        },
+        "correctAbstention": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "tenantLeakage": {
+          "numerator": 0,
+          "denominator": 30,
+          "value": 0,
+          "wilson95": {
+            "lower": 0,
+            "upper": 0.113517091390478
+          }
+        },
+        "answered": {
+          "numerator": 30,
+          "denominator": 30,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8864829086095221,
+            "upper": 1
+          }
+        },
+        "failures": []
+      },
+      "insufficient": {
+        "recallAt5": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "supportedClaims": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "correctAbstention": {
+          "numerator": 20,
+          "denominator": 20,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8388698745050667,
+            "upper": 1
+          }
+        },
+        "tenantLeakage": {
+          "numerator": 0,
+          "denominator": 20,
+          "value": 0,
+          "wilson95": {
+            "lower": 0,
+            "upper": 0.16113012549493322
+          }
+        },
+        "answered": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "failures": []
+      },
+      "adversarial": {
+        "recallAt5": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "supportedClaims": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "correctAbstention": {
+          "numerator": 10,
+          "denominator": 10,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.7224598312333834,
+            "upper": 1
+          }
+        },
+        "tenantLeakage": {
+          "numerator": 0,
+          "denominator": 10,
+          "value": 0,
+          "wilson95": {
+            "lower": 0,
+            "upper": 0.2775401687666166
+          }
+        },
+        "answered": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "failures": []
+      }
+    },
+    "metrics": {
+      "recallAt5": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "supportedClaims": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "correctAbstention": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "tenantLeakage": {
+        "numerator": 0,
+        "denominator": 60,
+        "value": 0,
+        "wilson95": {
+          "lower": 0,
+          "upper": 0.06017393047793289
+        }
+      },
+      "answered": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "failures": []
+    },
+    "rawSyntheticVectorRecallAt5": {
+      "numerator": 2,
+      "denominator": 30,
+      "value": 0.06666666666666667,
+      "wilson95": {
+        "lower": 0.01847663532769335,
+        "upper": 0.21323817721072091
+      }
+    },
+    "latency": {
+      "requests": 60,
+      "p95Ms": 28.44800000000032,
+      "maxMs": 31.027541999999812,
+      "includes": "query embedding, PostgreSQL retrieval, context, mock generation, citation validation; excludes BullMQ queue delay"
+    },
+    "cost": {
+      "maxEstimatedUsd": 0,
+      "totalEstimatedUsd": 0
+    },
+    "targets": {
+      "recall": true,
+      "support": true,
+      "abstention": true,
+      "leakage": true,
+      "latency": true,
+      "cost": true,
+      "answers": true
+    },
+    "passed": true,
+    "limitations": [
+      "Small synthetic set; no production semantic generalization or live-provider SLA/cost claim.",
+      "Support measures exact-quotation support, not arbitrary prose entailment. Wilson intervals are descriptive; paired synthetic templates are not independent production samples.",
+      "Synthetic hash vectors are not semantic; hybrid lexical retrieval is evaluated and raw vector recall is reported separately.",
+      "Normal run uses mock token estimates and zero mock prices."
+    ]
+  },
+  "httpBenchmark": {
+    "provider": "mock",
+    "requests": 10,
+    "concurrency": 10,
+    "workerConcurrency": 2,
+    "p95Ms": 618.1099579999991,
+    "elapsedMs": [
+      550.7898750000004, 462.52579200000037, 495.3181250000016, 569.6314580000017,
+      587.5882500000007, 605.6055419999993, 555.7018750000007, 522.4391250000008, 618.1099579999991,
+      592.3755419999998
+    ],
+    "includes": "authenticated REST submission, BullMQ queue, worker RAG and GraphQL polling",
+    "excludes": "ticket fixture creation",
+    "generatedAt": "2026-10-21T01:09:52.301Z"
+  },
+  "coverage": {
+    "total": {
+      "lines": {
+        "total": 3475,
+        "covered": 3416,
+        "skipped": 0,
+        "pct": 98.3
+      },
+      "statements": {
+        "total": 3475,
+        "covered": 3416,
+        "skipped": 0,
+        "pct": 98.3
+      },
+      "functions": {
+        "total": 195,
+        "covered": 189,
+        "skipped": 0,
+        "pct": 96.92
+      },
+      "branches": {
+        "total": 882,
+        "covered": 820,
+        "skipped": 0,
+        "pct": 92.97
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "areas": {
+      "packages/ai/src/": {
+        "covered": 170,
+        "total": 176,
+        "percent": 96.59
+      },
+      "packages/db/src/": {
+        "covered": 245,
+        "total": 273,
+        "percent": 89.74
+      },
+      "services/api/src/application/": {
+        "covered": 143,
+        "total": 149,
+        "percent": 95.97
+      },
+      "services/api/src/auth/": {
+        "covered": 50,
+        "total": 54,
+        "percent": 92.59
+      },
+      "services/worker/src/drafting/": {
+        "covered": 35,
+        "total": 39,
+        "percent": 89.74
+      },
+      "services/worker/src/ingestion/": {
+        "covered": 177,
+        "total": 191,
+        "percent": 92.67
+      }
+    }
+  }
+}

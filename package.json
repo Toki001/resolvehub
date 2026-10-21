@@ -34,7 +34,10 @@
     "db:bootstrap": "turbo run build --filter=@resolvehub/db && dotenv -e .env -- tsx scripts/bootstrap-database.ts",
     "test:unit": "pnpm test",
     "test:coverage": "pnpm exec tsx scripts/test-integration.ts --coverage",
-    "test:all": "pnpm test:coverage"
+    "test:all": "pnpm test:coverage",
+    "ai:fixtures": "tsx scripts/generate-eval-fixtures.ts",
+    "ai:eval": "tsx scripts/test-integration.ts --eval",
+    "ai:benchmark": "pnpm ai:eval"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",

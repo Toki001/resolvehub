@@ -1,4 +1,4 @@
-.PHONY: setup install dev build start check generate up down migrate seed bootstrap smoke integration e2e test coverage typecheck
+.PHONY: setup install dev build start check generate up down migrate seed bootstrap smoke integration e2e test coverage typecheck eval benchmark
 
 setup:
 	pnpm env:setup
@@ -54,3 +54,9 @@ coverage:
 
 typecheck:
 	pnpm typecheck
+
+eval:
+	pnpm ai:eval
+
+benchmark:
+	pnpm ai:benchmark

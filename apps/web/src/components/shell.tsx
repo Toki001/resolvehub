@@ -100,14 +100,11 @@ export function Shell({ children }: { children: ReactNode }) {
             <strong>{current}</strong>
           </div>
           <div className="topbar-right">
-            <span className="milestone-badge">Milestone 01</span>
+            <span className="milestone-badge">Milestone 06</span>
             <Link href="/settings#health" className="help-link" aria-label="View system health">
               <CircleHelp size={18} />
             </Link>
-            <span
-              className="profile-avatar"
-              title="Local workspace; authentication arrives in milestone 02"
-            >
+            <span className="profile-avatar" title="Local dashboard; sign-in is not connected">
               RH
             </span>
           </div>

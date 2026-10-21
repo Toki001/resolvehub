@@ -9,3 +9,5 @@ The model/dimension pair in `embedding_configuration` is pinned to `resolvehub-s
 See [database operations](../../docs/operations/database.md) for bootstrap, deterministic fixtures, least-privilege credentials, migrations and rollback. Fixtures are explicit local tooling; never run automatically on service startup or in production.
 
 Migration 0007 adds worker state, restricted cross-tenant dispatch and global admission counting. Apply both API and worker grant scripts after migrating. See [ingestion recovery](../../docs/operations/ingestion-recovery.md).
+
+Migrations 0008–0010 add draft metadata/source-job uniqueness, durable per-attempt usage, and a narrow tenant-scoped authority-lock capability. `src/drafting.ts` owns the draft session, publication and DLQ transactions. Apply the updated worker grants after migration. See [AI drafting](../../docs/operations/ai-drafting.md).

@@ -143,7 +143,11 @@ async function main() {
     EMBEDDING_MODEL: 'resolvehub-synthetic-sha256-v1',
     EMBEDDING_DIMENSIONS: '64',
     AI_PROVIDER: 'mock',
+    DRAFT_PROVIDER: 'mock',
+    DRAFT_MODEL: 'resolvehub-extractive-mock-v1',
   };
+  if (process.argv.includes('--eval'))
+    return run(process.execPath, ['--import', 'tsx', 'scripts/evaluate-ai.ts'], env);
   await mkdir('test-results', { recursive: true });
   const log = await open('test-results/worker.log', 'w');
   try {

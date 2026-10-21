@@ -5,7 +5,7 @@ import * as schema from './schema.js';
 export { migrate } from './migrate.js';
 export { ContractStore, TenantRepository, StoreConflict } from './store.js';
 export type { MutationReceipt, Actor, PageWindow, TicketFilter } from './store.js';
-export const CONTRACT_MIGRATION = '0007_ingestion_pipeline.sql';
+export const CONTRACT_MIGRATION = '0010_draft_authority_fence.sql';
 
 // Pool lifecycle belongs to the owning service; no process-global connections.
 export function createDatabase(
@@ -28,3 +28,6 @@ export { tenantTransaction, tenantDrizzle } from './tenant.js';
 export { EMBEDDING_MODEL, EMBEDDING_DIMENSIONS, parseEmbeddingConfiguration } from './embedding.js';
 export { IngestionSession, PIPELINE_VERSION } from './ingestion.js';
 export type { IngestionSource, IndexedChunk, IngestionFailureRecord } from './ingestion.js';
+
+export { DraftSession } from './drafting.js';
+export type { DraftPublication } from './drafting.js';
