@@ -60,3 +60,13 @@ eval:
 
 benchmark:
 	pnpm ai:benchmark
+
+.PHONY: workflows images image-smoke
+workflows:
+	pnpm ci:workflows
+
+images:
+	pnpm docker:build
+
+image-smoke:
+	pnpm docker:smoke

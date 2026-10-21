@@ -1,0 +1,11 @@
+# Host-installed Caddy; set RESOLVEHUB_PUBLIC_HOST to the WEB_ORIGIN hostname.
+# DNS must reach this host, with 80/443 available for certificate issuance.
+{$RESOLVEHUB_PUBLIC_HOST} {
+  @api path /v1/* /graphql
+  handle @api {
+    reverse_proxy 127.0.0.1:3001
+  }
+  handle {
+    reverse_proxy 127.0.0.1:3000
+  }
+}

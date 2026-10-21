@@ -37,13 +37,18 @@
     "test:all": "pnpm test:coverage",
     "ai:fixtures": "tsx scripts/generate-eval-fixtures.ts",
     "ai:eval": "tsx scripts/test-integration.ts --eval",
-    "ai:benchmark": "pnpm ai:eval"
+    "ai:benchmark": "pnpm ai:eval",
+    "ci:workflows": "node scripts/check-workflows.mjs",
+    "docker:build": "node scripts/docker-build.mjs",
+    "docker:smoke": "turbo run build --filter=@resolvehub/db && tsx scripts/docker-smoke.ts",
+    "security:scan": "node --experimental-strip-types scripts/security-scan.ts",
+    "deploy:check": "node scripts/check-deployment.mjs"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
     "@aws-sdk/client-s3": "^3.1152.0",
     "@eslint/js": "^9.39.1",
-    "@faker-js/faker": "9.9.0",
+    "@faker-js/faker": "10.5.0",
     "@jest/globals": "30.5.2",
     "@nestjs/common": "12.2.0",
     "@nestjs/core": "12.2.0",

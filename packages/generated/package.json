@@ -23,5 +23,8 @@
     "openapi-typescript": "^7.10.1",
     "@graphql-codegen/cli": "7.4.6",
     "@graphql-codegen/client-preset": "6.2.3"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

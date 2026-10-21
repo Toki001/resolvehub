@@ -1,5 +1,6 @@
 module.exports = {
   testEnvironment: 'node',
+  modulePathIgnorePatterns: ['<rootDir>/apps/web/.next/'],
   extensionsToTreatAsEsm: ['.ts'],
   coverageProvider: 'v8',
   coverageReporters: ['text', 'json', 'json-summary', 'lcov', 'html'],

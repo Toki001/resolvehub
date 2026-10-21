@@ -22,5 +22,8 @@
   "devDependencies": {
     "dotenv-cli": "^10.0.0",
     "tsx": "^4.20.6"
-  }
+  },
+  "files": [
+    "dist"
+  ]
 }

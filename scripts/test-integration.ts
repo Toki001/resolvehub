@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import type { ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:net';
@@ -29,7 +30,16 @@ async function run(command: string, args: string[], env = process.env): Promise<
   }
 }
 async function start(container: GenericContainer) {
-  const started = await container.withStartupTimeout(90000).start();
+  const name = `resolvehub-verification-${randomUUID()}`;
+  let started: StartedTestContainer;
+  try {
+    started = await container.withName(name).withStartupTimeout(90000).start();
+  } catch (error) {
+    // A failed start can leave a created container outside our started list.
+    // Ryuk is disabled, so remove only this reserved, test-owned name.
+    await run('docker', ['rm', '--force', '--volumes', name]);
+    throw error;
+  }
   containers.push(started);
   if (interrupted) throw new Error('Verification interrupted');
   return started;

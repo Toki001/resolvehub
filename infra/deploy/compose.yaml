@@ -1,0 +1,111 @@
+# Application tier only. Use managed/private PostgreSQL+pgvector, Redis and MinIO.
+# Run from the repository root with an explicit --env-file; see the release runbook.
+name: resolvehub-production
+
+x-runtime: &runtime
+  restart: unless-stopped
+  init: true
+  read_only: true
+  user: '10001:10001'
+  cap_drop: [ALL]
+  security_opt: ['no-new-privileges:true']
+  tmpfs: ['/tmp:rw,noexec,nosuid,size=64m']
+  stop_grace_period: 30s
+  networks: [application]
+  logging:
+    driver: local
+    options:
+      max-size: '10m'
+      max-file: '3'
+
+services:
+  migrate:
+    <<: *runtime
+    image: ${API_IMAGE:?Set an API image digest}
+    profiles: [tools]
+    restart: 'no'
+    command: ['migrate.mjs', '--grants']
+    environment:
+      DATABASE_URL_FILE: /run/secrets/migration_database_url
+    secrets: [migration_database_url]
+
+  api:
+    <<: *runtime
+    image: ${API_IMAGE:?Set an API image digest}
+    environment:
+      API_HOST: 0.0.0.0
+      API_PORT: '3001'
+      WEB_ORIGIN: ${WEB_ORIGIN:?Set the HTTPS public origin}
+      DATABASE_URL_FILE: /run/secrets/api_database_url
+      REDIS_URL_FILE: /run/secrets/redis_url
+      API_SECRET_KEY_FILE: /run/secrets/api_secret_key
+      S3_ENDPOINT: ${S3_ENDPOINT:?Set the HTTPS MinIO endpoint}
+      EMBEDDING_MODEL: resolvehub-synthetic-sha256-v1
+      EMBEDDING_DIMENSIONS: '64'
+    secrets: [api_database_url, redis_url, api_secret_key]
+    ports: ['127.0.0.1:3001:3001']
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+
+  worker:
+    <<: *runtime
+    image: ${WORKER_IMAGE:?Set a worker image digest}
+    environment:
+      WORKER_HOST: 0.0.0.0
+      WORKER_PORT: '3002'
+      DATABASE_URL_FILE: /run/secrets/worker_database_url
+      REDIS_URL_FILE: /run/secrets/redis_url
+      S3_ENDPOINT: ${S3_ENDPOINT:?Set the HTTPS MinIO endpoint}
+      S3_BUCKET: ${S3_BUCKET:?Set a private storage bucket}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID_FILE: /run/secrets/s3_access_key_id
+      S3_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_access_key
+      WORKER_CONCURRENCY: '2'
+      EMBEDDING_MODEL: resolvehub-synthetic-sha256-v1
+      EMBEDDING_DIMENSIONS: '64'
+      AI_PROVIDER: mock
+      DRAFT_PROVIDER: mock
+      DRAFT_MODEL: resolvehub-extractive-mock-v1
+    secrets: [worker_database_url, redis_url, s3_access_key_id, s3_secret_access_key]
+    mem_limit: 768m
+    cpus: 2
+    pids_limit: 128
+
+  web:
+    <<: *runtime
+    image: ${WEB_IMAGE:?Set a web image digest}
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: '3000'
+      API_URL: http://api:3001
+      WORKER_URL: http://worker:3002
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+      - /app/apps/web/.next/cache:rw,noexec,nosuid,size=64m,uid=10001,gid=10001
+    ports: ['127.0.0.1:3000:3000']
+    depends_on:
+      api: { condition: service_healthy }
+      worker: { condition: service_healthy }
+    mem_limit: 512m
+    cpus: 1
+    pids_limit: 128
+
+networks:
+  application:
+
+secrets:
+  migration_database_url:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/migration_database_url
+  api_database_url:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/api_database_url
+  worker_database_url:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/worker_database_url
+  redis_url:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/redis_url
+  api_secret_key:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/api_secret_key
+  s3_access_key_id:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/s3_access_key_id
+  s3_secret_access_key:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/s3_secret_access_key

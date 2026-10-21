@@ -17,5 +17,10 @@
   },
   "dependencies": {
     "zod": "^4.1.12"
-  }
+  },
+  "files": [
+    "dist",
+    "openapi.yaml",
+    "schema.graphql"
+  ]
 }
