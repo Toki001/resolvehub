@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
 import { TenantConnection } from './tenant.js';
+import { ticketStatus } from './ticket-status.js';
 
 export interface Actor {
   organizationId: string;
@@ -181,8 +182,8 @@ export class TenantRepository {
   }): Promise<unknown> {
     const id = randomUUID();
     await this.connection.query(
-      'INSERT INTO tickets (id,organization_id,subject,customer_email) VALUES ($1,$2,$3,$4)',
-      [id, this.organizationId, input.subject, input.customerEmail],
+      'INSERT INTO tickets (id,organization_id,subject,customer_email,status) VALUES ($1,$2,$3,$4,$5)',
+      [id, this.organizationId, input.subject, input.customerEmail, ticketStatus(null, 'create')],
     );
     await this.connection.query(
       `INSERT INTO ticket_messages (id,organization_id,ticket_id,body,author)

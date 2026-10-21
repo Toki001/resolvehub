@@ -35,3 +35,5 @@ export {
   SYNTHETIC_DIMENSIONS,
 } from './embedding.js';
 export type { EmbeddingProvider } from './embedding.js';
+
+export { EmbeddingProviderError } from './provider-error.js';

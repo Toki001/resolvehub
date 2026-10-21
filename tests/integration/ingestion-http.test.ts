@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createHash, randomUUID } from 'node:crypto';
 import {
   CreateBucketCommand,

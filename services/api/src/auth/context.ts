@@ -14,7 +14,7 @@ export interface GraphqlContext {
   res: Response;
 }
 
-export function identityOf(request: ApiRequest): Identity {
+export function identityOf(request: Pick<ApiRequest, 'identity'>): Identity {
   if (!request.identity) throw new ApiFault(401, 'UNAUTHENTICATED', 'Authentication is required.');
   return request.identity;
 }

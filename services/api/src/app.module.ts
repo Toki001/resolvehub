@@ -1,5 +1,5 @@
+import { createRequire } from 'node:module';
 import { Module } from '@nestjs/common';
-import { fileURLToPath } from 'node:url';
 import { GraphQLModule } from '@nestjs/graphql';
 import { ApolloDriver } from '@nestjs/apollo';
 import type { ApolloDriverConfig } from '@nestjs/apollo';
@@ -24,7 +24,7 @@ import type { GraphqlContext } from './auth/context.js';
   imports: [
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
-      typePaths: [fileURLToPath(import.meta.resolve('@resolvehub/contracts/schema.graphql'))],
+      typePaths: [createRequire(import.meta.url).resolve('@resolvehub/contracts/schema.graphql')],
       path: '/graphql',
       context: (context: GraphqlContext) => context,
       resolvers: scalarResolvers,

@@ -1,3 +1,5 @@
+import { EmbeddingProviderError } from '@resolvehub/ai';
+
 export class IngestionFailure extends Error {
   constructor(
     readonly category: string,
@@ -20,6 +22,15 @@ export function retryDelay(attempt: number, base = 1000, random = Math.random, r
 }
 export function classify(error: unknown): IngestionFailure {
   if (error instanceof IngestionFailure) return error;
+  if (error instanceof EmbeddingProviderError) {
+    if (error.status === 429)
+      return new IngestionFailure('PROVIDER_RATE_LIMITED', false, error.retryAfterMs);
+    return new IngestionFailure(
+      'PROVIDER_UNAVAILABLE',
+      error.status >= 400 && error.status < 500,
+      error.retryAfterMs,
+    );
+  }
   return new IngestionFailure('DEPENDENCY_UNAVAILABLE');
 }
 export function bounded<T>(

@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { createHash, randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
@@ -14,7 +15,7 @@ import {
   S3Client,
 } from '@aws-sdk/client-s3';
 import { ContractStore, createDatabase, IngestionSession, migrate } from '@resolvehub/db';
-import { SyntheticEmbeddingProvider } from '@resolvehub/ai';
+import { EmbeddingProviderError, SyntheticEmbeddingProvider } from '@resolvehub/ai';
 import type { EmbeddingProvider } from '@resolvehub/ai';
 import { INGESTION_QUEUE } from '@resolvehub/contracts';
 import { ingestionProcessor } from '../../services/worker/src/ingestion/processor.js';
@@ -25,8 +26,11 @@ import {
   dispatchIngestions,
   ingestionQueue,
   ingestionBackoff,
+  createIngestionRuntime,
 } from '../../services/worker/src/ingestion/runtime.js';
 import { schema } from '../helpers/contracts.js';
+import { parseWorkerEnv } from '../../services/worker/src/env.js';
+import { chunkText } from '../../services/worker/src/ingestion/extract.js';
 
 jest.setTimeout(90000);
 // Every container is explicitly stopped in afterAll; no external Ryuk image is
@@ -794,4 +798,280 @@ test('a Redis loss during embedding admission retries from the persisted chunk c
     fetch.mockRestore();
     redis.disconnect();
   }
+});
+
+test.each([429, 500])(
+  'provider HTTP %i retries use durable history and retain staged work',
+  async (status) => {
+    const input = await createJob('Synthetic policy used to inject provider HTTP failures.');
+    const provider = new SyntheticEmbeddingProvider();
+    let calls = 0;
+    const embed = jest.fn(async (texts: readonly string[], signal: AbortSignal) => {
+      calls++;
+      if (calls <= 2) throw new EmbeddingProviderError(status, 150);
+      return provider.embed(texts, signal);
+    });
+    const download = jest.spyOn(storage, 'fetch');
+    try {
+      await runWorker(
+        { model: provider.model, dimensions: provider.dimensions, embed },
+        async (queue) => {
+          await queue.add('indexDocument', input.data);
+          await until(
+            () => job(input.jobId),
+            (j) => j.status === 'succeeded',
+          );
+        },
+      );
+      expect(embed).toHaveBeenCalledTimes(3);
+      expect(download).toHaveBeenCalledTimes(1);
+      expect(await active(input.documentId)).toBe(input.versionId);
+      const attempts = await pool.query<{
+        outcome: string;
+        error_category: string | null;
+        delay: number;
+      }>(
+        `SELECT outcome,error_category,extract(epoch FROM (finished_at-started_at))*1000 AS delay FROM job_attempts WHERE organization_id=$1 AND job_id=$2 ORDER BY attempt`,
+        [organizationId, input.jobId],
+      );
+      expect(attempts.rows.map((a) => a.outcome)).toEqual(['transient', 'transient', 'succeeded']);
+      expect(attempts.rows.slice(0, 2).map((a) => a.error_category)).toEqual(
+        Array(2).fill(status === 429 ? 'PROVIDER_RATE_LIMITED' : 'PROVIDER_UNAVAILABLE'),
+      );
+      const times = await pool.query<{ gap: string }>(
+        `SELECT extract(epoch FROM (started_at-lag(finished_at) OVER(ORDER BY attempt)))*1000 AS gap FROM job_attempts WHERE organization_id=$1 AND job_id=$2 ORDER BY attempt`,
+        [organizationId, input.jobId],
+      );
+      expect(times.rows.slice(1).every((r) => Number(r.gap) >= 140)).toBe(true);
+      expect(await store.tenant(organizationId).failure(input.jobId)).toBeUndefined();
+    } finally {
+      download.mockRestore();
+    }
+  },
+);
+
+test('provider HTTP 500 exhaustion preserves the prior searchable version and stores four safe failures', async () => {
+  const original = await createJob('Synthetic stable outagepolicy remains searchable.');
+  await runWorker(new SyntheticEmbeddingProvider(), async (queue) => {
+    await queue.add('indexDocument', original.data);
+    await until(
+      () => job(original.jobId),
+      (j) => j.status === 'succeeded',
+    );
+  });
+  const replacement = await createJob('Synthetic replacement must remain unpublished.', {
+    documentId: original.documentId,
+  });
+  const provider = new SyntheticEmbeddingProvider();
+  const embed = jest.fn(
+    async (_texts: readonly string[], _signal: AbortSignal): Promise<number[][]> => {
+      throw new EmbeddingProviderError(500);
+    },
+  );
+  await runWorker(
+    { model: provider.model, dimensions: provider.dimensions, embed },
+    async (queue) => {
+      await queue.add('indexDocument', replacement.data);
+      await until(
+        () => job(replacement.jobId),
+        (j) => j.status === 'failed',
+      );
+    },
+  );
+  expect(embed).toHaveBeenCalledTimes(4);
+  expect(await active(original.documentId)).toBe(original.versionId);
+  const matches = await store
+    .tenant(organizationId)
+    .search('outagepolicy', { first: 10, snapshot: new Date().toISOString() });
+  expect(matches).toEqual([expect.objectContaining({ versionId: original.versionId })]);
+  expect(
+    schema('FailedJob', await store.tenant(organizationId).failure(replacement.jobId)),
+  ).toMatchObject({
+    errorCategory: 'PROVIDER_UNAVAILABLE',
+    replayEligible: true,
+    attemptHistory: [1, 2, 3, 4].map((attempt) =>
+      expect.objectContaining({ attempt, errorCategory: 'PROVIDER_UNAVAILABLE' }),
+    ),
+  });
+});
+
+test('worker validates envelopes, model identity and missing tenant jobs before touching storage', async () => {
+  const provider = new SyntheticEmbeddingProvider();
+  const dependencies = {
+    pool,
+    storage,
+    provider,
+    pdf,
+    limiter: { acquire: async () => undefined },
+  };
+  expect(() =>
+    ingestionProcessor({
+      ...dependencies,
+      provider: { ...provider, model: 'wrong', embed: provider.embed },
+    }),
+  ).toThrow('Embedding configuration mismatch');
+  expect(() =>
+    ingestionProcessor({
+      ...dependencies,
+      provider: { ...provider, dimensions: 1536, embed: provider.embed },
+    }),
+  ).toThrow('Embedding configuration mismatch');
+  const process = ingestionProcessor(dependencies);
+  await expect(process({ organizationId, jobId: 'bad' })).rejects.toThrow(
+    'Invalid ingestion envelope',
+  );
+  await expect(process({ organizationId, jobId: randomUUID() })).resolves.toBeUndefined();
+  expect(await IngestionSession.open(pool, otherOrg, randomUUID())).toBeUndefined();
+});
+
+test('malformed authoritative payload fails permanently without allowing checkpoint writes', async () => {
+  const input = await createJob('Synthetic corruption fixture.');
+  await pool.query("UPDATE job_runs SET payload='{}'::jsonb WHERE id=$1", [input.jobId]);
+  const session = await IngestionSession.open(pool, organizationId, input.jobId);
+  if (!session) throw new Error('Missing fixture session');
+  try {
+    expect(await session.source()).toBeUndefined();
+    expect(await session.extraction()).toBeUndefined();
+    expect(await session.pendingEmbeddings()).toEqual([]);
+    await expect(session.saveExtraction('must not persist')).rejects.toThrow(
+      'Invalid ingestion state',
+    );
+    await expect(session.stageChunks([])).rejects.toThrow('Invalid ingestion state');
+    await expect(session.saveEmbeddings([])).rejects.toThrow('Invalid ingestion state');
+    await expect(session.complete()).rejects.toThrow('Invalid ingestion state');
+  } finally {
+    await session.close();
+  }
+  await runWorker(new SyntheticEmbeddingProvider(), async (queue) => {
+    await queue.add('indexDocument', input.data);
+    await until(
+      () => job(input.jobId),
+      (j) => j.status === 'failed',
+    );
+  });
+  expect(
+    schema('FailedJob', await store.tenant(organizationId).failure(input.jobId)),
+  ).toMatchObject({ errorCategory: 'RESOURCE_UNAVAILABLE', replayEligible: false });
+});
+
+test('checkpoint conflicts and incomplete embeddings roll back instead of publishing partial content', async () => {
+  const input = await createJob('Synthetic checkpoint rollback.');
+  const session = await IngestionSession.open(pool, organizationId, input.jobId);
+  if (!session) throw new Error('Missing fixture session');
+  try {
+    expect(await session.claim()).toBe('run');
+    const chunks = chunkText('Synthetic checkpoint rollback.', input.versionId);
+    await session.stageChunks(chunks);
+    await expect(
+      session.stageChunks(chunks.map((c) => ({ ...c, contentHash: 'f'.repeat(64) }))),
+    ).rejects.toThrow('Checkpoint integrity mismatch');
+    await expect(session.complete()).rejects.toThrow('Incomplete index');
+    expect(await active(input.documentId)).toBeNull();
+    expect((await job(input.jobId)).status).toBe('processing');
+    expect(
+      (
+        await pool.query('SELECT content_hash FROM knowledge_chunks WHERE version_id=$1', [
+          input.versionId,
+        ])
+      ).rows,
+    ).toEqual(chunks.map((c) => ({ content_hash: c.contentHash })));
+  } finally {
+    await session.close();
+  }
+});
+
+test.each(['revoked', 'deleted'] as const)(
+  'publication rechecks %s authority after provider work',
+  async (change) => {
+    const input = await createJob('Synthetic authority recheck.');
+    const delegate = new SyntheticEmbeddingProvider();
+    const provider: EmbeddingProvider = {
+      model: delegate.model,
+      dimensions: delegate.dimensions,
+      embed: async (texts, signal) => {
+        const result = await delegate.embed(texts, signal);
+        if (change === 'revoked')
+          await pool.query('UPDATE memberships SET active=false WHERE id=$1', [member]);
+        else
+          await pool.query('UPDATE knowledge_documents SET deleted_at=now() WHERE id=$1', [
+            input.documentId,
+          ]);
+        return result;
+      },
+    };
+    try {
+      await runWorker(provider, async (queue) => {
+        await queue.add('indexDocument', input.data);
+        await until(
+          () => job(input.jobId),
+          (j) => j.status === 'failed',
+        );
+      });
+      expect(await active(input.documentId)).toBeNull();
+      expect((await job(input.jobId)).reasonCode).toBe('RESOURCE_SUPERSEDED');
+    } finally {
+      await pool.query('UPDATE memberships SET active=true WHERE id=$1', [member]);
+    }
+  },
+);
+
+test.each(['count', 'dimension', 'nonfinite', 'zero'] as const)(
+  'invalid provider %s output never publishes and exhausts four attempts',
+  async (kind) => {
+    const input = await createJob('Synthetic invalid embedding output.');
+    const delegate = new SyntheticEmbeddingProvider();
+    const provider: EmbeddingProvider = {
+      model: delegate.model,
+      dimensions: delegate.dimensions,
+      embed: async () =>
+        kind === 'count'
+          ? []
+          : [Array(kind === 'dimension' ? 63 : 64).fill(kind === 'nonfinite' ? NaN : 0)],
+    };
+    await runWorker(provider, async (queue) => {
+      await queue.add('indexDocument', input.data);
+      await until(
+        () => job(input.jobId),
+        (j) => j.status === 'failed',
+      );
+    });
+    expect(await active(input.documentId)).toBeNull();
+    expect(
+      schema('FailedJob', await store.tenant(organizationId).failure(input.jobId)),
+    ).toMatchObject({
+      errorCategory: 'INVALID_EMBEDDING',
+      attemptHistory: [1, 2, 3, 4].map((attempt) => expect.objectContaining({ attempt })),
+    });
+  },
+);
+
+test('real ingestion runtime dispatches durable records, becomes ready, and closes its connections', async () => {
+  const input = await createJob('Synthetic runtime lifecycle policy.');
+  const env = parseWorkerEnv({
+    NODE_ENV: 'test',
+    AI_PROVIDER: 'mock',
+    DATABASE_URL: url.toString(),
+    REDIS_URL: redisUrl,
+    S3_ENDPOINT: process.env.S3_ENDPOINT,
+    S3_BUCKET: bucket,
+    S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
+    S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
+    INGESTION_QUEUE_PREFIX: `runtime-${randomUUID()}`,
+  });
+  const runtime = createIngestionRuntime(
+    env,
+    pool,
+    pathToFileURL(`${process.cwd()}/services/worker/dist/ingestion/pdf-parser.js`),
+  );
+  try {
+    await until(() => Promise.resolve(runtime.ready()), Boolean);
+    await until(
+      () => job(input.jobId),
+      (j) => j.status === 'succeeded',
+    );
+    expect(await active(input.documentId)).toBe(input.versionId);
+  } finally {
+    await runtime.close();
+  }
+  expect(runtime.ready()).toBe(false);
 });

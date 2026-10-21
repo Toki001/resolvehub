@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { Injectable } from '@nestjs/common';
 import { Ajv2020 } from 'ajv/dist/2020.js';
@@ -20,7 +21,10 @@ export class ContractValidator {
     formatsPlugin.default(this.ajv);
     const document = documentSchema.parse(
       parse(
-        readFileSync(new URL(import.meta.resolve('@resolvehub/contracts/openapi.yaml')), 'utf8'),
+        readFileSync(
+          createRequire(import.meta.url).resolve('@resolvehub/contracts/openapi.yaml'),
+          'utf8',
+        ),
       ),
     );
     this.ajv.addSchema({ $id: 'urn:resolvehub:api', components: document.components });

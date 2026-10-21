@@ -43,7 +43,19 @@ jobs:
       - name: Wait for service readiness
         run: node scripts/wait-for-services.mjs
       - run: pnpm smoke
-      - run: pnpm test:integration
+      - name: Verify isolated integration tests and critical-service coverage
+        run: pnpm test:coverage
+      - name: Upload verification reports
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: verification-reports
+          path: |
+            coverage/
+            test-results/jest-results.json
+            test-results/worker.log
+          if-no-files-found: warn
+          retention-days: 14
       - name: Stop infrastructure
         if: always()
         run: docker compose down

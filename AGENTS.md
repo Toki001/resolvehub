@@ -37,7 +37,8 @@ Read this file and `CODEX.md` before editing. Implement only the requested miles
 
 ## Tests, migrations and delivery
 
-- Use Jest for meaningful policy/unit/contract checks and real infrastructure for integration checks. Use Testcontainers when domain integration suites arrive. Test cross-tenant denial, retries, duplicate jobs and partial failures before related features ship.
+- Use Jest for meaningful policy/unit/contract checks and real infrastructure for integration checks. Use Testcontainers for domain integration suites. Test cross-tenant denial, retries, duplicate jobs and partial failures before related features ship.
+- `pnpm test` runs units/contracts without infrastructure. `pnpm test:coverage` owns isolated Testcontainers and must pass for critical service changes; preserve the independent 80% branch gates. Never point these integration tests at a developer database or load `.env`. Use deterministic synthetic fixtures and mock AI; normal CI must make no paid provider calls.
 - Browser tests cover navigation, keyboard access, loading/empty/error states and responsive behavior. Deterministic mock AI must never claim evidence or confidence it does not have.
 - Apply numbered SQL migrations through the migration runner, not application startup. Never edit an applied migration. Use expand → migrate → contract, with backup/recovery notes for destructive changes. Bootstrap extensions under `infra/docker` are not application migrations.
 - Embedding dimensions and model versions must come from verified provider configuration. Dimension changes require explicit data/migration planning.

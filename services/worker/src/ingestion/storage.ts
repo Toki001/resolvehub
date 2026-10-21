@@ -1,13 +1,21 @@
 import { createHash } from 'node:crypto';
 import { Readable } from 'node:stream';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
-import type { S3Client } from '@aws-sdk/client-s3';
 import type { IngestionSource } from '@resolvehub/db';
 import { IngestionFailure } from './failure.js';
 
 export class DocumentStorage {
   constructor(
-    private readonly s3: S3Client,
+    private readonly s3: {
+      send(
+        command: GetObjectCommand,
+        options: { abortSignal: AbortSignal },
+      ): Promise<{
+        Body?: unknown;
+        ContentType?: string;
+        ContentLength?: number;
+      }>;
+    },
     private readonly bucket: string,
   ) {}
   async fetch(source: IngestionSource, organizationId: string, signal: AbortSignal) {

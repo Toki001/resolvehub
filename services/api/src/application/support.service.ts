@@ -7,11 +7,12 @@ import { DatabaseService } from './database.service.js';
 import { ContractValidator } from './validator.js';
 import { ApiFault, notFound, unavailable } from './fault.js';
 import { Pagination } from './pagination.js';
+import { idempotencyKey, requireWriteAccess } from './policy.js';
 import { fingerprint } from '../auth/crypto.js';
 import type { Identity } from '../auth/context.js';
 
 type Schemas = components['schemas'];
-const idempotencyKey = z.string().regex(/^[A-Za-z0-9_-]{16,128}$/);
+
 const filterSchema = z
   .object({
     status: z.enum(['open', 'pending', 'resolved']).nullish(),
@@ -50,11 +51,6 @@ export class SupportService {
     @Inject(ContractValidator) private readonly validator: ContractValidator,
     @Inject(Pagination) private readonly pagination: Pagination,
   ) {}
-
-  private writeAccess(identity: Identity, admin = false) {
-    if (identity.role === 'analyst' || (admin && identity.role !== 'admin'))
-      throw new ApiFault(403, 'FORBIDDEN', 'Access is denied.');
-  }
 
   private async execute<T>(operation: () => Promise<T>): Promise<T> {
     try {
@@ -120,7 +116,7 @@ export class SupportService {
     key: unknown,
     input: Schemas['CreateTicketInput'],
   ) {
-    this.writeAccess(identity);
+    requireWriteAccess(identity);
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, 'POST /v1/tickets', input, async (repository) => {
       const body = this.validator.validate('Ticket', await repository.createTicket(input), true);
@@ -136,7 +132,7 @@ export class SupportService {
     input: Schemas['IngestionInput'] | Schemas['DocumentVersionInput'],
     documentId?: string,
   ) {
-    this.writeAccess(identity);
+    requireWriteAccess(identity);
     if (!input.objectKey.startsWith(`organizations/${identity.organizationId}/uploads/`))
       throw new ApiFault(403, 'FORBIDDEN', 'Object namespace is not accessible.');
     const actor = this.actor(identity, requestId);
@@ -163,7 +159,7 @@ export class SupportService {
   }
 
   requestDraft(identity: Identity, requestId: string, key: unknown, id: string) {
-    this.writeAccess(identity);
+    requireWriteAccess(identity);
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, `POST /v1/tickets/${id}/drafts`, {}, async (repository) => {
       if (!(await repository.ticket(id))) throw notFound();
@@ -181,7 +177,7 @@ export class SupportService {
     action: 'approve' | 'reject',
     input: Schemas['ApproveDraftInput'] | Schemas['RejectDraftInput'],
   ) {
-    this.writeAccess(identity);
+    requireWriteAccess(identity);
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, `POST /v1/drafts/${id}/${action}`, input, async (repository) => {
       const record = await repository.draft(id, true);
@@ -213,7 +209,7 @@ export class SupportService {
   }
 
   replay(identity: Identity, requestId: string, key: unknown, id: string) {
-    this.writeAccess(identity, true);
+    requireWriteAccess(identity, true);
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, `POST /v1/jobs/${id}/replay`, {}, async (repository) => {
       const jobId = await repository.replay(id, requestId, identity.membershipId);

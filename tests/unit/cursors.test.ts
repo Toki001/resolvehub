@@ -1,3 +1,4 @@
+import { jest } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { parse, getOperationAST } from 'graphql';
 import { Pagination } from '../../services/api/src/application/pagination.js';
