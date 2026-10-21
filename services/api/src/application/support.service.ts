@@ -1,3 +1,7 @@
+import { createHash } from 'node:crypto';
+import { UploadsService } from './uploads.service.js';
+import { REPLY_DELIVERY } from '../delivery/reply-delivery.js';
+import type { ReplyDelivery } from '../delivery/reply-delivery.js';
 import { Inject, Injectable } from '@nestjs/common';
 import { StoreConflict } from '@resolvehub/db';
 import type { Actor, MutationReceipt, TenantRepository } from '@resolvehub/db';
@@ -50,6 +54,8 @@ export class SupportService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(ContractValidator) private readonly validator: ContractValidator,
     @Inject(Pagination) private readonly pagination: Pagination,
+    @Inject(UploadsService) private readonly uploads: UploadsService,
+    @Inject(REPLY_DELIVERY) private readonly delivery: ReplyDelivery,
   ) {}
 
   private async execute<T>(operation: () => Promise<T>): Promise<T> {
@@ -194,6 +200,15 @@ export class SupportService {
         throw new StoreConflict('state');
       if (action === 'approve') {
         if (
+          draft.humanEdited &&
+          (!('acknowledgeEdits' in input) || input.acknowledgeEdits !== true)
+        )
+          throw new ApiFault(
+            422,
+            'INVALID_CONTENT',
+            'Review and acknowledge the edited wording before approval.',
+          );
+        if (
           !draft.evidenceValidated ||
           draft.citations.length === 0 ||
           (draft.generation && draft.generation.outcome !== 'answer')
@@ -214,9 +229,184 @@ export class SupportService {
         ),
         true,
       );
+      if (action === 'approve') await this.delivery.stage(repository, id, actor);
       await repository.audit(actor, `draft.${body.status}`, id);
       return { status: 200, body };
     });
+  }
+
+  editDraft(
+    identity: Identity,
+    requestId: string,
+    key: unknown,
+    id: string,
+    input: Schemas['EditDraftInput'],
+  ) {
+    requireWriteAccess(identity);
+    const actor = this.actor(identity, requestId);
+    return this.mutate(actor, key, `POST /v1/drafts/${id}/edits`, input, async (repository) => {
+      const record = await repository.draft(id, true);
+      if (!record) throw notFound();
+      const draft = this.validator.validate('Draft', record, true);
+      if (draft.status !== 'pending' || draft.revision !== input.expectedRevision)
+        throw new StoreConflict('state');
+      const body = this.validator.validate(
+        'Draft',
+        await repository.editDraft(id, input.text, identity.membershipId),
+        true,
+      );
+      await repository.audit(actor, 'draft.edited', id);
+      return { status: 200, body };
+    });
+  }
+  upload(identity: Identity, requestId: string, key: unknown, input: unknown, mediaType: unknown) {
+    requireWriteAccess(identity);
+    const bytes = z
+      .instanceof(Buffer)
+      .refine((v) => v.length > 0 && v.length <= 10485760)
+      .parse(input);
+    const type = z.enum(['text/plain', 'text/markdown', 'application/pdf']).parse(mediaType);
+    const validatedKey = idempotencyKey.parse(key);
+    const actor = this.actor(identity, requestId);
+    return this.mutate(
+      actor,
+      validatedKey,
+      'POST /v1/documents/uploads',
+      {
+        sha256: createHash('sha256').update(bytes).digest('hex'),
+        sizeBytes: bytes.length,
+        mediaType: type,
+      },
+      async (repository) => {
+        const body = this.validator.validate(
+          'UploadedDocument',
+          await this.uploads.put(identity.organizationId, validatedKey, bytes, type),
+          true,
+        );
+        await repository.audit(actor, 'document.uploaded', identity.membershipId);
+        return { status: 201, body };
+      },
+    );
+  }
+  changeTicketStatus(
+    identity: Identity,
+    requestId: string,
+    key: unknown,
+    id: string,
+    input: Schemas['ChangeTicketStatusInput'],
+  ) {
+    requireWriteAccess(identity);
+    const actor = this.actor(identity, requestId);
+    return this.mutate(actor, key, `POST /v1/tickets/${id}/status`, input, async (repository) => {
+      const body = this.validator.validate(
+        'Ticket',
+        await repository.changeTicketStatus(id, input.expectedStatus, input.event),
+        true,
+      );
+      await repository.audit(actor, 'ticket.status_changed', id);
+      return { status: 200, body };
+    });
+  }
+  customerMessage(
+    identity: Identity,
+    requestId: string,
+    key: unknown,
+    id: string,
+    input: Schemas['CustomerMessageInput'],
+  ) {
+    requireWriteAccess(identity);
+    const actor = this.actor(identity, requestId);
+    return this.mutate(actor, key, `POST /v1/tickets/${id}/messages`, input, async (repository) => {
+      const body = this.validator.validate(
+        'Message',
+        await repository.recordCustomerMessage(id, input.body),
+        true,
+      );
+      await repository.audit(actor, 'ticket.customer_message_recorded', body.id);
+      return { status: 201, body };
+    });
+  }
+  async reviewQueue(
+    identity: Identity,
+    first?: number | null,
+    after?: string | null,
+    status?: unknown,
+  ) {
+    const filter = {
+      status: z.enum(['pending', 'approved', 'rejected']).parse(status ?? 'pending'),
+    };
+    const window = this.pagination.window(
+      identity.organizationId,
+      'review-queue',
+      filter,
+      first,
+      after,
+    );
+    return this.execute(async () =>
+      window.connection(
+        (
+          await this.database.store
+            .tenant(identity.organizationId)
+            .reviewQueue(window.page, filter.status)
+        ).map((row) => this.validator.validate('Draft', row, true)),
+        (row) => row.id,
+      ),
+    );
+  }
+  async backgroundJobs(
+    identity: Identity,
+    first?: number | null,
+    after?: string | null,
+    status?: unknown,
+  ) {
+    const filter = {
+      status:
+        z
+          .enum(['accepted', 'processing', 'succeeded', 'failed', 'cancelled'])
+          .nullish()
+          .parse(status) ?? undefined,
+    };
+    const window = this.pagination.window(
+      identity.organizationId,
+      'background-jobs',
+      filter,
+      first,
+      after,
+    );
+    return this.execute(async () =>
+      window.connection(
+        (
+          await this.database.store
+            .tenant(identity.organizationId)
+            .backgroundJobs(window.page, filter.status)
+        ).map((row) => this.validator.validate('Job', row, true)),
+        (row) => row.id,
+      ),
+    );
+  }
+  async messageHistory(
+    identity: Identity,
+    ticketId: string,
+    first?: number | null,
+    after?: string | null,
+  ) {
+    const window = this.pagination.window(
+      identity.organizationId,
+      `messages:${ticketId}`,
+      {},
+      first,
+      after,
+    );
+    return this.execute(async () =>
+      window.connection(
+        (
+          await this.database.store
+            .tenant(identity.organizationId)
+            .messageHistory(ticketId, window.page)
+        ).map((row) => this.validator.validate('Message', row, true)),
+        (row) => row.id,
+      ),
+    );
   }
 
   replay(identity: Identity, requestId: string, key: unknown, id: string) {

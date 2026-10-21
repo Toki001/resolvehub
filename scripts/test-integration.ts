@@ -156,6 +156,8 @@ async function main() {
     DRAFT_PROVIDER: 'mock',
     DRAFT_MODEL: 'resolvehub-extractive-mock-v1',
   };
+  if (process.argv.includes('--dashboard'))
+    return run(process.execPath, ['--import', 'tsx', 'scripts/dashboard-browser.ts'], env);
   if (process.argv.includes('--performance'))
     return run(process.execPath, ['--import', 'tsx', 'scripts/performance.ts'], env);
   if (process.argv.includes('--eval'))

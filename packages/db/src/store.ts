@@ -36,7 +36,7 @@ const ticketJson = `jsonb_build_object('id',t.id,'subject',t.subject,'customerEm
   'status',t.status,'createdAt',t.created_at,'updatedAt',t.updated_at)`;
 const draftJson = `jsonb_build_object('id',d.id,'ticketId',d.ticket_id,'text',d.text,'status',d.status,
   'revision',d.revision,'citations',(SELECT coalesce(jsonb_agg((jsonb_build_object('documentId',e.document_id,'versionId',e.version_id,'chunkId',e.chunk_id) || CASE WHEN e.quote IS NULL THEN '{}'::jsonb ELSE jsonb_build_object('quote',e.quote,'reference','['||(e.position+1)::text||']') END) ORDER BY e.position),'[]'::jsonb) FROM citations e WHERE e.organization_id=d.organization_id AND e.draft_id=d.id),'evidenceValidated',d.evidence_validated,
-  'model',d.model,'promptVersion',d.prompt_version,'generation',d.generation,'reviewedBy',d.reviewed_by,
+  'humanEdited',d.human_edited,'originalText',d.original_text,'editedBy',d.edited_by,'editedAt',d.edited_at,'model',d.model,'promptVersion',d.prompt_version,'generation',d.generation,'reviewedBy',d.reviewed_by,
   'reviewedAt',d.reviewed_at,'reviewReason',d.review_reason,'createdAt',d.created_at)`;
 const jobJson = `jsonb_build_object('id',j.id,'kind',j.kind,'status',j.status,'resourceId',j.resource_id,
   'attempts',j.attempts,'reasonCode',j.reason_code,'requestId',j.request_id,'createdAt',j.created_at,'updatedAt',j.updated_at)`;
@@ -196,7 +196,7 @@ export class TenantRepository {
 
   async messages(ticketId: string): Promise<unknown[]> {
     const result = await this.connection.query<{ data: unknown }>(
-      `SELECT jsonb_build_object('id',id,'body',body,'author',author,'createdAt',created_at) AS data
+      `SELECT jsonb_build_object('id',id,'body',body,'author',author,'createdAt',created_at,'deliveryStatus',delivery_status,'sourceDraftId',source_draft_id) AS data
        FROM ticket_messages WHERE organization_id=$1 AND ticket_id=$2 AND deleted_at IS NULL AND EXISTS (SELECT 1 FROM tickets t WHERE t.organization_id=$1 AND t.id=$2 AND t.deleted_at IS NULL) ORDER BY created_at,id LIMIT 100`,
       [this.organizationId, ticketId],
     );
@@ -232,6 +232,124 @@ export class TenantRepository {
       [this.organizationId, id, status, actorId, reason],
     );
     return this.draft(id);
+  }
+
+  async editDraft(id: string, text: string, actorId: string): Promise<unknown> {
+    await this.connection.query(
+      `UPDATE draft_responses SET original_text=coalesce(original_text,text),text=$3,
+       human_edited=true,edited_by=$4,edited_at=now(),revision=revision+1
+       WHERE organization_id=$1 AND id=$2`,
+      [this.organizationId, id, text, actorId],
+    );
+    return this.draft(id);
+  }
+  async recordApprovedReply(draftId: string) {
+    const id = randomUUID();
+    const result = await this.connection.query(
+      `INSERT INTO ticket_messages(id,organization_id,ticket_id,body,author,delivery_status,source_draft_id)
+       SELECT $3,organization_id,ticket_id,text,'agent','internal',id FROM draft_responses
+       WHERE organization_id=$1 AND id=$2 AND status='approved' AND deleted_at IS NULL`,
+      [this.organizationId, draftId, id],
+    );
+    if (result.rowCount !== 1) throw new StoreConflict('state');
+    await this.connection.query(
+      'UPDATE tickets SET updated_at=now() WHERE organization_id=$1 AND id=(SELECT ticket_id FROM draft_responses WHERE organization_id=$1 AND id=$2)',
+      [this.organizationId, draftId],
+    );
+    return id;
+  }
+  async recordCustomerMessage(ticketId: string, body: string): Promise<unknown> {
+    const id = randomUUID();
+    const row = await this.connection.query(
+      `INSERT INTO ticket_messages(id,organization_id,ticket_id,body,author,delivery_status)
+      SELECT $3,organization_id,id,$4,'customer','received' FROM tickets WHERE organization_id=$1 AND id=$2 AND deleted_at IS NULL`,
+      [this.organizationId, ticketId, id, body],
+    );
+    if (!row.rowCount) throw new StoreConflict('not_found');
+    await this.connection.query(
+      'UPDATE tickets SET updated_at=now() WHERE organization_id=$1 AND id=$2',
+      [this.organizationId, ticketId],
+    );
+    const result = await this.connection.query<{ data: unknown }>(
+      `SELECT jsonb_build_object('id',id,'body',body,'author',author,'deliveryStatus',delivery_status,'sourceDraftId',source_draft_id,'createdAt',created_at) data FROM ticket_messages WHERE organization_id=$1 AND id=$2`,
+      [this.organizationId, id],
+    );
+    return result.rows[0]?.data;
+  }
+  async changeTicketStatus(
+    id: string,
+    expected: string,
+    event: 'wait' | 'resolve' | 'reopen',
+  ): Promise<unknown> {
+    const locked = await this.connection.query<{ status: unknown }>(
+      'SELECT status FROM tickets WHERE organization_id=$1 AND id=$2 AND deleted_at IS NULL FOR UPDATE',
+      [this.organizationId, id],
+    );
+    const current = z
+      .enum(['open', 'pending', 'resolved'])
+      .optional()
+      .parse(locked.rows[0]?.status);
+    if (!current) throw new StoreConflict('not_found');
+    if (current !== expected || (current === 'resolved' && event === 'wait'))
+      throw new StoreConflict('state');
+    await this.connection.query(
+      'UPDATE tickets SET status=$3,updated_at=now() WHERE organization_id=$1 AND id=$2',
+      [this.organizationId, id, ticketStatus(current, event)],
+    );
+    return this.ticket(id);
+  }
+  async reviewQueue(page: PageWindow, status: string): Promise<unknown[]> {
+    const rows = await this.connection.query<{ data: unknown }>(
+      `SELECT ${draftJson} data FROM draft_responses d
+      WHERE d.organization_id=$1 AND d.status=$2 AND d.deleted_at IS NULL
+      AND EXISTS(SELECT 1 FROM tickets t WHERE t.organization_id=d.organization_id AND t.id=d.ticket_id AND t.deleted_at IS NULL)
+      AND d.created_at<=$3::timestamptz AND ($4::timestamptz IS NULL OR (d.created_at,d.id)<($4::timestamptz,$5::uuid))
+      ORDER BY d.created_at DESC,d.id DESC LIMIT $6`,
+      [
+        this.organizationId,
+        status,
+        page.snapshot,
+        page.last?.createdAt ?? null,
+        page.last?.id ?? null,
+        page.first + 1,
+      ],
+    );
+    return rows.rows.map((row) => row.data);
+  }
+  async backgroundJobs(page: PageWindow, status?: string): Promise<unknown[]> {
+    const rows = await this.connection.query<{ data: unknown }>(
+      `SELECT ${jobJson} data FROM job_runs j
+      WHERE j.organization_id=$1 AND ($2::text IS NULL OR j.status=$2) AND j.created_at<=$3::timestamptz
+      AND ($4::timestamptz IS NULL OR (j.created_at,j.id)<($4::timestamptz,$5::uuid))
+      ORDER BY j.created_at DESC,j.id DESC LIMIT $6`,
+      [
+        this.organizationId,
+        status ?? null,
+        page.snapshot,
+        page.last?.createdAt ?? null,
+        page.last?.id ?? null,
+        page.first + 1,
+      ],
+    );
+    return rows.rows.map((row) => row.data);
+  }
+  async messageHistory(ticketId: string, page: PageWindow): Promise<unknown[]> {
+    const rows = await this.connection.query<{ data: unknown }>(
+      `SELECT jsonb_build_object('id',m.id,'body',m.body,'author',m.author,'createdAt',m.created_at,'deliveryStatus',m.delivery_status,'sourceDraftId',m.source_draft_id) data
+      FROM ticket_messages m WHERE m.organization_id=$1 AND m.ticket_id=$2 AND m.deleted_at IS NULL
+      AND EXISTS(SELECT 1 FROM tickets t WHERE t.organization_id=$1 AND t.id=$2 AND t.deleted_at IS NULL)
+      AND m.created_at<=$3::timestamptz AND ($4::timestamptz IS NULL OR (m.created_at,m.id)<($4::timestamptz,$5::uuid))
+      ORDER BY m.created_at DESC,m.id DESC LIMIT $6`,
+      [
+        this.organizationId,
+        ticketId,
+        page.snapshot,
+        page.last?.createdAt ?? null,
+        page.last?.id ?? null,
+        page.first + 1,
+      ],
+    );
+    return rows.rows.map((row) => row.data);
   }
 
   async activeCitation(citation: {

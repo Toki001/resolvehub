@@ -93,6 +93,10 @@ query DraftResponse($id: ID!) {
     status
     revision
     evidenceValidated
+    humanEdited
+    originalText
+    editedBy
+    editedAt
     model
     promptVersion
     generation {
@@ -145,5 +149,116 @@ query DashboardSummary {
     pendingReviews
     acceptedJobs
     failedJobs
+  }
+}
+
+fragment ReviewDraft on DraftResponse {
+  id
+  ticketId
+  text
+  status
+  revision
+  evidenceValidated
+  humanEdited
+  originalText
+  editedBy
+  editedAt
+  model
+  promptVersion
+  reviewedBy
+  reviewedAt
+  reviewReason
+  createdAt
+  citations {
+    documentId
+    versionId
+    chunkId
+    quote
+    reference
+  }
+  generation {
+    outcome
+    abstentionReason
+    inputTokens
+    outputTokens
+    estimatedCostUsd
+    usageIncomplete
+    provider
+    totalLatencyMs
+  }
+}
+query ReviewQueue($first: Int = 20, $after: Cursor, $status: DraftStatus = pending) {
+  reviewQueue(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        ...ReviewDraft
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+query WorkspaceDraft($id: ID!) {
+  draft(id: $id) {
+    ...ReviewDraft
+  }
+}
+query BackgroundJobs($first: Int = 20, $after: Cursor, $status: JobStatus) {
+  backgroundJobs(first: $first, after: $after, status: $status) {
+    edges {
+      cursor
+      node {
+        id
+        kind
+        status
+        resourceId
+        attempts
+        reasonCode
+        createdAt
+        updatedAt
+      }
+    }
+    pageInfo {
+      hasNextPage
+      endCursor
+    }
+  }
+}
+query WorkspaceTicket($id: ID!, $messagesAfter: Cursor) {
+  ticket(id: $id) {
+    id
+    subject
+    customerEmail
+    status
+    createdAt
+    updatedAt
+    messageHistory(first: 50, after: $messagesAfter) {
+      edges {
+        cursor
+        node {
+          id
+          body
+          author
+          deliveryStatus
+          sourceDraftId
+          createdAt
+        }
+      }
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+    }
+    drafts {
+      id
+      text
+      status
+      revision
+      humanEdited
+      createdAt
+    }
   }
 }

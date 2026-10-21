@@ -47,9 +47,14 @@ services:
       REDIS_URL_FILE: /run/secrets/redis_url
       API_SECRET_KEY_FILE: /run/secrets/api_secret_key
       S3_ENDPOINT: ${S3_ENDPOINT:?Set the HTTPS MinIO endpoint}
+      S3_BUCKET: ${S3_BUCKET:?Set a private storage bucket}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY_ID_FILE: /run/secrets/api_s3_access_key_id
+      S3_SECRET_ACCESS_KEY_FILE: /run/secrets/api_s3_secret_access_key
       EMBEDDING_MODEL: resolvehub-synthetic-sha256-v1
       EMBEDDING_DIMENSIONS: '64'
-    secrets: [api_database_url, redis_url, api_secret_key]
+    secrets:
+      [api_database_url, redis_url, api_secret_key, api_s3_access_key_id, api_s3_secret_access_key]
     ports: ['127.0.0.1:3001:3001']
     mem_limit: 512m
     cpus: 1
@@ -108,6 +113,10 @@ secrets:
     file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/migration_database_url
   api_database_url:
     file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/api_database_url
+  api_s3_access_key_id:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/api_s3_access_key_id
+  api_s3_secret_access_key:
+    file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/api_s3_secret_access_key
   worker_database_url:
     file: ${RESOLVEHUB_SECRETS_DIR:?Set an absolute external secret directory}/worker_database_url
   redis_url:

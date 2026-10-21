@@ -224,6 +224,7 @@ export function buildFixtures() {
           ticketId,
           body,
           author: m % 2 === 0 ? 'customer' : 'agent',
+          deliveryStatus: m % 2 === 0 ? 'received' : 'internal',
           createdAt: new Date(createdAt.getTime() + m * 120_000),
           updatedAt: new Date(createdAt.getTime() + m * 120_000),
         }),

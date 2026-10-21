@@ -100,6 +100,12 @@ test('Faker corpus and all persisted rows repeat exactly, replacing only the res
     customers: 80,
     citations: 60,
   });
+  const delivery = await pool.query<{ invalid: number }>(
+    `SELECT count(*)::int invalid FROM ticket_messages WHERE
+      (author='agent' AND delivery_status<>'internal') OR
+      (author='customer' AND delivery_status<>'received')`,
+  );
+  expect(delivery.rows[0]?.invalid).toBe(0);
   await pool.query('DELETE FROM organizations WHERE id=$1', [outside]);
 });
 

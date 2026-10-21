@@ -133,7 +133,7 @@ test('REST draft jobs produce structured GraphQL evidence and require scoped aud
         [orgA, ticket],
       )
     ).rowCount,
-  ).toBe(0);
+  ).toBe(1);
   expect(
     (
       await pool.query(

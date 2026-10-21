@@ -10,6 +10,8 @@ import { HealthController } from './health.controller.js';
 import { HealthService } from './health.service.js';
 import { DatabaseService } from './application/database.service.js';
 import { ContractValidator } from './application/validator.js';
+import { UploadsService } from './application/uploads.service.js';
+import { REPLY_DELIVERY, InternalReplyDelivery } from './delivery/reply-delivery.js';
 import { SupportService } from './application/support.service.js';
 import { Pagination } from './application/pagination.js';
 import { AuthService } from './auth/auth.service.js';
@@ -49,6 +51,8 @@ import type { GraphqlContext } from './auth/context.js';
     WebhookAuthService,
     { provide: Pagination, useFactory: (env: ApiEnv) => new Pagination(env), inject: [API_ENV] },
     SupportService,
+    UploadsService,
+    { provide: REPLY_DELIVERY, useClass: InternalReplyDelivery },
     SupportResolver,
     TicketResolver,
     HealthService,

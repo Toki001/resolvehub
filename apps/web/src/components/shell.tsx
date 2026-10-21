@@ -105,9 +105,14 @@ export function Shell({ children }: { children: ReactNode }) {
             <Link href="/settings#health" className="help-link" aria-label="View system health">
               <CircleHelp size={18} />
             </Link>
-            <span className="profile-avatar" title="Local dashboard; sign-in is not connected">
+            <Link
+              href="/settings#account"
+              className="profile-avatar"
+              title="Workspace account"
+              aria-label="Workspace account"
+            >
               RH
-            </span>
+            </Link>
           </div>
         </header>
         <main id="main-content" tabIndex={-1} className="min-w-0 flex-1">
@@ -116,7 +121,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <footer className="page-footer">
           <span>Better support starts with clarity.</span>
           <span>
-            Local workspace <span aria-hidden="true">·</span> Foundation release
+            Local workspace <span aria-hidden="true">·</span> Internal support workspace
           </span>
         </footer>
       </div>

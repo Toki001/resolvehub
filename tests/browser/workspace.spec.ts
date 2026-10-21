@@ -6,7 +6,9 @@ test('all four workspace pages are navigable and honest about scope', async ({ p
   await page.goto('/');
   await expect(page).toHaveURL(/\/tickets$/);
   await expect(page.getByRole('heading', { name: 'Tickets', exact: true })).toBeVisible();
-  await expect(page.getByText('Ready for your first conversation')).toBeVisible();
+  await expect(
+    page.getByRole('heading', { name: 'Connect your workspace', exact: true }),
+  ).toBeVisible();
   for (const [label, url] of [
     ['Knowledge Base', '/knowledge'],
     ['Review Queue', '/review'],

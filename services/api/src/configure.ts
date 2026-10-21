@@ -35,9 +35,11 @@ export function configureApplication(app: NestExpressApplication, env: ApiEnv): 
       'Idempotency-Key',
       'X-Request-ID',
       'traceparent',
+      'X-Document-Type',
     ],
     exposedHeaders: ['X-Request-ID', 'Location', 'Retry-After'],
   });
+  app.useBodyParser('raw', { type: 'application/octet-stream', limit: '10mb' });
   app.useBodyParser('json', { limit: '64kb' });
   app.useGlobalFilters(new ApiExceptionFilter());
 }

@@ -150,6 +150,10 @@ export const ticketMessages = pgTable(
     ticketId: uuid('ticket_id').notNull(),
     body: text().notNull(),
     author: text({ enum: ['customer', 'agent'] }).notNull(),
+    deliveryStatus: text('delivery_status', { enum: ['received', 'internal'] })
+      .notNull()
+      .default('received'),
+    sourceDraftId: uuid('source_draft_id'),
     ...lifecycle(),
   },
   (t) => [
@@ -161,6 +165,19 @@ export const ticketMessages = pgTable(
     index('ticket_messages_parent').on(t.organizationId, t.ticketId, t.createdAt, t.id),
     check('ticket_messages_body_check', sql`length(${t.body}) between 1 and 20000`),
     check('ticket_messages_author_check', sql`${t.author} in ('customer','agent')`),
+    check('message_delivery_status', sql`${t.deliveryStatus} in ('received','internal')`),
+    check(
+      'message_approved_source',
+      sql`${t.sourceDraftId} is null or (${t.author}='agent' and ${t.deliveryStatus}='internal')`,
+    ),
+    foreignKey({
+      name: 'message_source_draft_owned',
+      columns: [t.organizationId, t.ticketId, t.sourceDraftId],
+      foreignColumns: [draftResponses.organizationId, draftResponses.ticketId, draftResponses.id],
+    }),
+    uniqueIndex('message_once_per_draft')
+      .on(t.organizationId, t.sourceDraftId)
+      .where(sql`${t.sourceDraftId} is not null`),
   ],
 ).enableRLS();
 const versionStates = [
@@ -314,6 +331,10 @@ export const draftResponses = pgTable(
       .default([])
       .notNull(),
     evidenceValidated: boolean('evidence_validated').default(false).notNull(),
+    humanEdited: boolean('human_edited').default(false).notNull(),
+    originalText: text('original_text'),
+    editedBy: uuid('edited_by'),
+    editedAt: timestamp('edited_at', { withTimezone: true, precision: 3 }),
     model: text().notNull(),
     promptVersion: text('prompt_version').notNull(),
     generation: jsonb().$type<unknown>(),
@@ -344,7 +365,16 @@ export const draftResponses = pgTable(
       foreignColumns: [jobRuns.organizationId, jobRuns.id],
     }),
     unique('draft_source_job_unique').on(t.organizationId, t.sourceJobId),
+    unique('draft_message_parent').on(t.organizationId, t.ticketId, t.id),
     index('drafts_parent').on(t.organizationId, t.ticketId, t.createdAt.desc(), t.id.desc()),
+    index('drafts_review_page')
+      .on(t.organizationId, t.status, t.createdAt.desc(), t.id.desc())
+      .where(sql`${t.deletedAt} is null`),
+    foreignKey({
+      name: 'draft_editor_owned',
+      columns: [t.organizationId, t.editedBy],
+      foreignColumns: [memberships.organizationId, memberships.id],
+    }),
     check('draft_responses_status_check', sql`${t.status} in ('pending','approved','rejected')`),
     check('draft_responses_revision_check', sql`${t.revision}>0`),
     check('draft_responses_citations_check', sql`jsonb_typeof(${t.citations})='array'`),

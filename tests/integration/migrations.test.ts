@@ -77,6 +77,7 @@ test('migrations install cleanly, preserve rows through expansion, repeat safely
       '0009_draft_usage_accounting.sql',
       '0010_draft_authority_fence.sql',
       '0011_trace_context_and_operational_metrics.sql',
+      '0012_internal_support_workflow.sql',
     ]);
     expect(
       (

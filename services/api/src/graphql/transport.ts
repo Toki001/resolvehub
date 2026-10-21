@@ -69,7 +69,16 @@ export function checkQueryBudget(
         });
       if (node.kind === Kind.FIELD) {
         let quantity = 1;
-        if (['tickets', 'knowledgeDocuments', 'knowledgeSearch'].includes(node.name.value)) {
+        if (
+          [
+            'tickets',
+            'knowledgeDocuments',
+            'knowledgeSearch',
+            'reviewQueue',
+            'backgroundJobs',
+            'messageHistory',
+          ].includes(node.name.value)
+        ) {
           const arg = node.arguments?.find((entry) => entry.name.value === 'first');
           quantity = z
             .number()

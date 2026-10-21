@@ -40,10 +40,55 @@ type Ticket {
   createdAt: DateTime!
   updatedAt: DateTime!
   messages: [TicketMessage!]!
+  messageHistory(first: Int = 50, after: Cursor): MessageConnection!
   drafts: [DraftResponse!]!
 }
 
+type MessageEdge {
+  cursor: Cursor!
+  node: TicketMessage!
+}
+type MessageConnection {
+  edges: [MessageEdge!]!
+  pageInfo: PageInfo!
+}
+type DraftEdge {
+  cursor: Cursor!
+  node: DraftResponse!
+}
+type DraftConnection {
+  edges: [DraftEdge!]!
+  pageInfo: PageInfo!
+}
+enum JobStatus {
+  accepted
+  processing
+  succeeded
+  failed
+  cancelled
+}
+type BackgroundJob {
+  id: ID!
+  kind: String!
+  status: JobStatus!
+  resourceId: ID
+  attempts: Int!
+  reasonCode: String
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+type JobEdge {
+  cursor: Cursor!
+  node: BackgroundJob!
+}
+type JobConnection {
+  edges: [JobEdge!]!
+  pageInfo: PageInfo!
+}
+
 type TicketMessage {
+  deliveryStatus: String!
+  sourceDraftId: ID
   id: ID!
   body: String!
   author: String!
@@ -103,6 +148,10 @@ type Citation {
 }
 
 type DraftResponse {
+  humanEdited: Boolean!
+  originalText: String
+  editedBy: ID
+  editedAt: DateTime
   id: ID!
   ticketId: ID!
   text: String!
@@ -131,6 +180,8 @@ type DashboardSummary {
 
 "All queries require verified membership; organization IDs are never query arguments."
 type Query {
+  reviewQueue(first: Int = 20, after: Cursor, status: DraftStatus = pending): DraftConnection!
+  backgroundJobs(first: Int = 20, after: Cursor, status: JobStatus): JobConnection!
   "Newest first by immutable (createdAt, id), snapshot scoped; first defaults to 20, range 1..100."
   tickets(first: Int = 20, after: Cursor, filter: TicketFilter): TicketConnection!
   "Unknown and inaccessible IDs both produce NOT_FOUND with a null result."

@@ -13,6 +13,34 @@ import { SupportService } from '../application/support.service.js';
 export class SupportResolver {
   constructor(@Inject(SupportService) private readonly support: SupportService) {}
 
+  @Query('reviewQueue')
+  reviews(
+    @Context() context: GraphqlContext,
+    @Args('first') first: number | null,
+    @Args('after') after: string | null,
+    @Args('status') status: unknown,
+  ) {
+    return observed(
+      'graphql.resolve',
+      { field: 'reviewQueue' },
+      () => this.support.reviewQueue(identityOf(context.req), first, after, status),
+      context.telemetryContext,
+    );
+  }
+  @Query('backgroundJobs')
+  jobs(
+    @Context() context: GraphqlContext,
+    @Args('first') first: number | null,
+    @Args('after') after: string | null,
+    @Args('status') status: unknown,
+  ) {
+    return observed(
+      'graphql.resolve',
+      { field: 'backgroundJobs' },
+      () => this.support.backgroundJobs(identityOf(context.req), first, after, status),
+      context.telemetryContext,
+    );
+  }
   @Query('tickets')
   tickets(
     @Context() context: GraphqlContext,
@@ -88,6 +116,20 @@ export class SupportResolver {
 export class TicketResolver {
   constructor(@Inject(SupportService) private readonly support: SupportService) {}
 
+  @ResolveField('messageHistory')
+  history(
+    @Context() context: GraphqlContext,
+    @Parent() ticket: components['schemas']['Ticket'],
+    @Args('first') first: number | null,
+    @Args('after') after: string | null,
+  ) {
+    return observed(
+      'graphql.resolve',
+      { field: 'messageHistory' },
+      () => this.support.messageHistory(identityOf(context.req), ticket.id, first, after),
+      context.telemetryContext,
+    );
+  }
   @ResolveField('messages')
   messages(@Context() context: GraphqlContext, @Parent() ticket: components['schemas']['Ticket']) {
     return observed(

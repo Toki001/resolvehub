@@ -560,7 +560,7 @@ test('signed webhooks verify raw bytes and time, deduplicate events and reject c
   ).toBe(401);
 });
 
-test('approval is audited once, uses revision control, and sends no reply', async () => {
+test('approval records one internal reply, is audited and uses revision control', async () => {
   const key = randomUUID();
   const url = `/v1/drafts/${draftA}/approve`;
   const result = await rest('POST', '/v1/drafts/{id}/approve', url, {
@@ -607,7 +607,7 @@ test('approval is audited once, uses revision control, and sends no reply', asyn
         [organizationA, ticketA],
       )
     ).rows[0]?.count,
-  ).toBe('0');
+  ).toBe('1');
 });
 
 test('review rejects unsafe evidence, stale revisions and inaccessible drafts', async () => {

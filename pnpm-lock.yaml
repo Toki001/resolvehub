@@ -301,6 +301,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@graphql-typed-document-node/core':
+        specifier: ^3.2.0
+        version: 3.2.0(graphql@16.14.2)
       '@resolvehub/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -310,6 +313,9 @@ importers:
       '@resolvehub/telemetry':
         specifier: workspace:*
         version: link:../../packages/telemetry
+      graphql:
+        specifier: ^16.11.0
+        version: 16.14.2
       lucide-react:
         specifier: ^0.548.0
         version: 0.548.0(react@19.3.1)
@@ -445,6 +451,9 @@ importers:
       '@as-integrations/express5':
         specifier: ^1.1.2
         version: 1.1.2(@apollo/server@5.5.1(graphql@16.14.2)(supports-color@10.2.2))(express@5.3.0(supports-color@10.2.2))
+      '@aws-sdk/client-s3':
+        specifier: ^3.1152.0
+        version: 3.1152.0
       '@nestjs/apollo':
         specifier: 14.0.3
         version: 14.0.3(@apollo/server@5.5.1(graphql@16.14.2)(supports-color@10.2.2))(@as-integrations/express5@1.1.2(@apollo/server@5.5.1(graphql@16.14.2)(supports-color@10.2.2))(express@5.3.0(supports-color@10.2.2)))(@nestjs/common@12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(@nestjs/core@12.2.0)(@nestjs/graphql@14.0.3(@nestjs/common@12.2.0(reflect-metadata@0.2.2)(rxjs@7.8.2)(supports-color@10.2.2))(@nestjs/core@12.2.0)(graphql@16.14.2)(reflect-metadata@0.2.2)(typescript@5.9.3))(graphql@16.14.2)

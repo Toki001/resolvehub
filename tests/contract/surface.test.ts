@@ -27,10 +27,12 @@ test('canonical schemas reject tenant authority and undeclared mutation fields',
 test('SDL exposes authenticated reads and no tenant argument or GraphQL mutation', () => {
   const sdl = buildSchema(readFileSync('packages/contracts/schema.graphql', 'utf8'));
   expect(Object.keys(sdl.getQueryType()?.getFields() ?? {}).sort()).toEqual([
+    'backgroundJobs',
     'dashboardSummary',
     'draft',
     'knowledgeDocuments',
     'knowledgeSearch',
+    'reviewQueue',
     'ticket',
     'tickets',
   ]);

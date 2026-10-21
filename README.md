@@ -2,9 +2,9 @@
 
 A multi-tenant AI customer support platform, built one verified milestone at a time. **Milestones 01–08 provide authenticated contract APIs, versioned persistence, durable ingestion, automated verification, evidence-bound support drafting, CI/CD and private operational telemetry.** The full roadmap is in [CODEX.md](CODEX.md); engineering rules are in [AGENTS.md](AGENTS.md).
 
-The dashboard retains its foundation shell with working navigation and live health. The API supports tenant-authenticated REST commands and schema-first GraphQL reads, generated clients, durable idempotency, signed webhook receipts and audited review. No customer data is seeded automatically. Document ingestion runs through MinIO, validated extraction/chunking, deterministic embeddings and atomic publication, with bounded BullMQ retries and a PostgreSQL dead-letter queue. Support draft jobs now retrieve tenant-filtered published evidence and produce cited pending drafts or explicit abstentions. Generation uses the deterministic extractive mock by default, with an optional Ollama adapter. Webhook domain processing and outbound delivery remain deferred.
+The dashboard connects verified organization members to persisted tickets, knowledge uploads, cited drafts and human review. Approved replies become internal ticket messages in the same transaction as their review; they are never marked externally delivered. Browser sessions use HttpOnly cookies and server-side API calls. Document ingestion runs through MinIO, validated extraction/chunking, deterministic embeddings and atomic publication, with bounded BullMQ retries and a PostgreSQL dead-letter queue. Generation uses the explicitly labeled extractive mock by default, with an optional Ollama adapter. External customer delivery and webhook domain processing remain deferred.
 
-![Tickets workspace](docs/verification/dashboard-desktop.png)
+![Internal ticket conversation](docs/verification/internal-support-desktop.png)
 
 ## Start locally
 
@@ -13,11 +13,11 @@ Prerequisites: Node **22.22.3**, pnpm **12.10.1**, Docker with Compose v2 or lat
 ```sh
 make setup         # creates an ignored .env if missing; frozen dependency install
 make up            # PostgreSQL/pgvector, Redis and MinIO; waits for health checks
-make migrate       # explicit, checksum-verified numbered SQL migrations
+make dashboard     # migrate and provision the private local synthetic workspace
 make dev           # Next.js, NestJS and the separate worker via Turborepo
 ```
 
-Open **http://localhost:3000**. Settings → System health checks the real services. `make setup` generates a private API secret in ignored `.env`; example infrastructure values are for local use only. Provision expiring API credentials with `pnpm auth:bootstrap`; see the [API operations guide](docs/operations/contract-apis.md). Dashboard sign-in and data wiring remain future work. API callers use verified bearer credentials, never a trusted tenant header.
+Open **http://localhost:3000**. Settings → System health checks the real services. `make setup` generates a private API secret in ignored `.env`; example infrastructure values are for local use only. Provision expiring API credentials with `pnpm auth:bootstrap`; see the [API operations guide](docs/operations/contract-apis.md). Open `/sign-in` and choose **Open local workspace** after `make dashboard`. For other memberships, use an administrator-issued expiring access key. See [the complete internal workflow guide](docs/operations/internal-support.md). API callers use verified bearer credentials, never a trusted tenant header.
 
 The first `make up` builds MinIO from a pinned official source commit because the public community images could not be pulled. It needs internet access and can take several minutes. See the [decision record](docs/architecture/decisions/0001-local-minio-source-build.md).
 
@@ -43,12 +43,14 @@ Run only one application stack at a time. Stop it with Ctrl+C. `make down` stops
 | `pnpm db:seed`                                             | Replace the two reserved synthetic organizations in a local database                       |
 | `pnpm db:bootstrap --database resolvehub_synthetic --seed` | Create a new local database, migrate and seed it                                           |
 | `pnpm db:migrate`                                          | Apply outstanding checksum-verified SQL migrations                                         |
+| `pnpm dashboard:setup`                                     | Migrate and provision an expiring local development workspace membership                   |
 | `pnpm smoke`                                               | Check web/API/worker readiness, process a real BullMQ probe and check duplicate job IDs    |
 | `pnpm test` / `pnpm test:unit`                             | Jest unit and contract tests without Docker                                                |
 | `pnpm typecheck`                                           | Strict workspace and test TypeScript checks                                                |
 | `pnpm test:coverage` / `pnpm test:all`                     | Combined suite, isolated infrastructure and 80% branch gates per critical area             |
 | `pnpm test:integration`                                    | Self-contained NestJS, PostgreSQL/Redis/MinIO Testcontainers and failure injection         |
 | `pnpm test:e2e`                                            | Browser navigation, responsive layout and health-error checks; requires installed Chrome   |
+| `pnpm test:dashboard`                                      | Build and verify authenticated desktop/mobile workflows with disposable infrastructure     |
 | `pnpm infra:check`                                         | Validate Compose without starting containers                                               |
 | `pnpm infra:down`                                          | Stop infrastructure without deleting data                                                  |
 
@@ -82,3 +84,5 @@ Milestone 06 adds tenant-filtered RAG, optional lexical reranking, bounded conte
 Milestone 07 adds read-only PR/merge-queue verification and protected-main/version-tag GHCR delivery, with separate non-root production images and digest-based promotion. Run `pnpm ci:workflows`, `pnpm security:scan`, `pnpm docker:build` and `pnpm docker:smoke`. See [release/deployment/rollback operations](docs/operations/releases.md), the [branch protection checklist](docs/operations/branch-protection.md), [decision 0008](docs/architecture/decisions/0008-ci-and-image-delivery.md) and [milestone 07 verification](docs/verification/milestone-07.md). Repository protection and registry permissions must be configured before enabling releases.
 
 Milestone 08 adds early OpenTelemetry SDK initialization, private HTTP/GraphQL/SQL/Redis traces, durable request-to-worker context propagation, ingestion/RAG spans, token/cost and queue metrics, and provisioned Grafana/Tempo/Prometheus with tested alerts. Run `pnpm observability:up`, set `OTEL_ENABLED=true` in `.env`, then restart the apps. Grafana runs on http://127.0.0.1:3003; its private generated password is in ignored `.env.observability`. `pnpm observability:check` validates configuration and alert firing; `pnpm observability:verify` checks the running services and authenticated provisioning. `pnpm perf:run` measures isolated k6 drafting and queue saturation with mock providers. See [operations/recovery](docs/operations/observability.md), [performance measurements and limits](docs/performance-report.md), [decision 0009](docs/architecture/decisions/0009-private-operational-telemetry.md) and [milestone 08 verification](docs/verification/milestone-08.md).
+
+The authenticated dashboard follow-up connects ticket creation/status/context/history, private knowledge uploads and revisions, cited draft generation, editing, approval/rejection and audited internal replies. Run `pnpm dashboard:setup` for a local development-only account and `pnpm test:dashboard` for isolated desktop/mobile workflow verification. See [workflow operations](docs/operations/internal-support.md), [decision 0010](docs/architecture/decisions/0010-authenticated-dashboard-and-internal-replies.md) and [verification](docs/verification/internal-support-workflow.md).

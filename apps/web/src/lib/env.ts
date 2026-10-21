@@ -1,6 +1,11 @@
 import { z } from 'zod';
 
 const schema = z.object({
+  DASHBOARD_LOCAL_DEMO: z.enum(['true', 'false']).default('false'),
+  DASHBOARD_LOCAL_DEMO_TOKEN: z
+    .string()
+    .regex(/^rh_[A-Za-z0-9_-]{43}$/)
+    .optional(),
   API_URL: z
     .url()
     .refine((url) => /^https?:/.test(url))

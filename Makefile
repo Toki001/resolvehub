@@ -83,3 +83,10 @@ observability-check:
 
 performance:
 	pnpm perf:run
+
+.PHONY: dashboard dashboard-tests
+dashboard:
+	pnpm dashboard:setup
+
+dashboard-tests:
+	pnpm test:dashboard

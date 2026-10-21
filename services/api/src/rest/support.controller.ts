@@ -37,6 +37,77 @@ export class SupportController {
     return identityOf(request);
   }
 
+  @Post('documents/uploads')
+  async upload(
+    @Req() request: ApiRequest,
+    @Headers('idempotency-key') key: unknown,
+    @Headers('x-document-type') mediaType: unknown,
+    @Body() input: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return send(
+      response,
+      await this.support.upload(identityOf(request), request.requestId, key, input, mediaType),
+    );
+  }
+  @Post('drafts/:id/edits')
+  async edit(
+    @Req() request: ApiRequest,
+    @Param('id') id: string,
+    @Headers('idempotency-key') key: unknown,
+    @Body() input: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return send(
+      response,
+      await this.support.editDraft(
+        identityOf(request),
+        request.requestId,
+        key,
+        z.uuid().parse(id).toLowerCase(),
+        this.validator.validate('EditDraftInput', input),
+      ),
+    );
+  }
+  @Post('tickets/:id/status')
+  async status(
+    @Req() request: ApiRequest,
+    @Param('id') id: string,
+    @Headers('idempotency-key') key: unknown,
+    @Body() input: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return send(
+      response,
+      await this.support.changeTicketStatus(
+        identityOf(request),
+        request.requestId,
+        key,
+        z.uuid().parse(id).toLowerCase(),
+        this.validator.validate('ChangeTicketStatusInput', input),
+      ),
+    );
+  }
+  @Post('tickets/:id/messages')
+  async message(
+    @Req() request: ApiRequest,
+    @Param('id') id: string,
+    @Headers('idempotency-key') key: unknown,
+    @Body() input: unknown,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    return send(
+      response,
+      await this.support.customerMessage(
+        identityOf(request),
+        request.requestId,
+        key,
+        z.uuid().parse(id).toLowerCase(),
+        this.validator.validate('CustomerMessageInput', input),
+      ),
+    );
+  }
+
   @Post('tickets')
   async createTicket(
     @Req() request: ApiRequest,

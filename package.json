@@ -47,7 +47,9 @@
     "observability:up": "node scripts/observability.mjs up",
     "observability:down": "node scripts/observability.mjs down",
     "observability:check": "node scripts/observability.mjs check",
-    "observability:verify": "node scripts/observability.mjs verify"
+    "observability:verify": "node scripts/observability.mjs verify",
+    "dashboard:setup": "pnpm db:migrate && dotenv -e .env -- tsx scripts/setup-dashboard.ts",
+    "test:dashboard": "pnpm build && tsx scripts/test-integration.ts --dashboard"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
