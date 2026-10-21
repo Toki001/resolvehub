@@ -1,3 +1,11 @@
+import {
+  context as otelContext,
+  count,
+  observe,
+  tracer,
+  trace,
+  SpanStatusCode,
+} from '@resolvehub/telemetry';
 import type { ApolloServerPlugin } from '@apollo/server';
 import { GraphQLError, GraphQLScalarType, Kind, valueFromASTUntyped } from 'graphql';
 import type { DocumentNode, SelectionSetNode } from 'graphql';
@@ -98,7 +106,12 @@ const known = new Set([
   'INTERNAL_ERROR',
 ]);
 export const contractPlugin: ApolloServerPlugin<GraphqlContext> = {
-  async requestDidStart() {
+  async requestDidStart(request) {
+    const started = performance.now();
+    const span = tracer.startSpan('graphql.request', {
+      attributes: { operation: 'graphql.request' },
+    });
+    request.contextValue.telemetryContext = trace.setSpan(otelContext.active(), span);
     return {
       async didResolveOperation(context) {
         if (context.operation && context.document) {
@@ -117,6 +130,11 @@ export const contractPlugin: ApolloServerPlugin<GraphqlContext> = {
         }
       },
       async willSendResponse(context) {
+        const failed = Boolean(context.errors?.length);
+        count('graphql_requests', 1, { outcome: failed ? 'error' : 'success' });
+        observe('graphql_request_duration_seconds', (performance.now() - started) / 1000);
+        if (failed) span.setStatus({ code: SpanStatusCode.ERROR });
+        span.end();
         const requestId = context.contextValue.req.requestId;
         if (context.response.body.kind !== 'single') return;
         const result = context.response.body.singleResult;

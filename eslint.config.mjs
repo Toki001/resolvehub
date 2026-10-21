@@ -29,5 +29,9 @@ export default tseslint.config(
     },
   },
   { files: ['**/*.cjs'], rules: { '@typescript-eslint/no-require-imports': 'off' } },
+  {
+    files: ['tests/load/**/*.js'],
+    languageOptions: { globals: { __ENV: 'readonly', __VU: 'readonly', __ITER: 'readonly' } },
+  },
   prettier,
 );

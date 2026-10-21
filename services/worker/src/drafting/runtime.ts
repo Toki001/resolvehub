@@ -1,3 +1,5 @@
+import { observed, traceContext, queueTraceMetadata, SpanKind } from '@resolvehub/telemetry';
+import { jobTraceContext } from '@resolvehub/db';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import {
@@ -70,12 +72,23 @@ export function createDraftRuntime(
     signal: controller.signal,
     timeoutMs: config.timeoutMs + 1000,
   });
-  const worker = new Worker(DRAFT_QUEUE, (job) => process(job.data), {
-    connection: consumer,
-    prefix: env.INGESTION_QUEUE_PREFIX,
-    concurrency: env.WORKER_CONCURRENCY,
-    settings: { backoffStrategy: ingestionBackoff },
-  });
+  const worker = new Worker(
+    DRAFT_QUEUE,
+    (job) =>
+      observed(
+        'queue.consume',
+        { job_kind: 'draft_response' },
+        () => process(job.data),
+        traceContext(job.opts.telemetry?.metadata),
+        SpanKind.CONSUMER,
+      ),
+    {
+      connection: consumer,
+      prefix: env.INGESTION_QUEUE_PREFIX,
+      concurrency: env.WORKER_CONCURRENCY,
+      settings: { backoffStrategy: ingestionBackoff },
+    },
+  );
   worker.on('error', () => console.warn('Draft consumer interrupted'));
   worker.on('failed', () => console.warn('Draft attempt failed; inspect durable job state'));
   let stopped = false,
@@ -93,10 +106,18 @@ export function createDraftRuntime(
           existing = await queue.getJob(id);
         if (existing && ['completed', 'failed'].includes(await existing.getState()))
           await existing.remove();
-        await queue.add(
-          'draftSupportResponse',
-          { organizationId: row.organization_id, jobId: row.job_id },
-          { jobId: id },
+        const parent = await jobTraceContext(pool, row.organization_id, row.job_id);
+        await observed(
+          'queue.publish',
+          { job_kind: 'draft_response' },
+          () =>
+            queue.add(
+              'draftSupportResponse',
+              { organizationId: row.organization_id, jobId: row.job_id },
+              { jobId: id, telemetry: { metadata: queueTraceMetadata(), omitContext: true } },
+            ),
+          traceContext(parent),
+          SpanKind.PRODUCER,
         );
       }
       lastDispatch = Date.now();

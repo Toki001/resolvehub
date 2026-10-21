@@ -1,0 +1,29 @@
+rule_files: [/etc/prometheus/alerts.yaml]
+evaluation_interval: 1m
+tests:
+  - interval: 1m
+    input_series:
+      - series: 'resolvehub_queue_pending{job_kind="document_ingestion"}'
+        values: '1000+0x5'
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: ResolveHubQueueFull
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              summary: Document ingestion admission is saturated
+              runbook_url: docs/operations/observability.md#queue-and-dead-letters
+  - interval: 1m
+    input_series:
+      - series: 'resolvehub_draft_cost_usd_count'
+        values: '0 1 2 3 4 5'
+      - series: 'resolvehub_draft_cost_usd_bucket{le="0.02"}'
+        values: '0 0 0 0 0 0'
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: ResolveHubDraftCost
+        exp_alerts:
+          - exp_labels: { severity: critical }
+            exp_annotations:
+              summary: A completed draft exceeded the two-cent cost ceiling
+              runbook_url: docs/operations/observability.md#model-usage

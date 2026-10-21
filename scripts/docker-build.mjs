@@ -10,7 +10,7 @@ for (const target of ['api', 'worker', 'web']) {
       '--target',
       target,
       '--tag',
-      `resolvehub-ci/${target}:milestone07`,
+      `resolvehub-ci/${target}:local`,
       '.',
     ],
     { stdio: 'inherit' },

@@ -5,6 +5,8 @@ import { EMBEDDING_DIMENSIONS, EMBEDDING_MODEL, validateVector } from './embeddi
 
 const payloadSchema = z.object({ documentId: z.uuid(), versionId: z.uuid() }).strict();
 const jobSchema = z.object({
+  createdAt: z.coerce.date(),
+  availableAt: z.coerce.date(),
   id: z.uuid(),
   organizationId: z.uuid(),
   status: z.string(),
@@ -64,7 +66,7 @@ export class IngestionSession {
         organizationId,
       ]);
       const row = await client.query<{ data: unknown }>(
-        `SELECT jsonb_build_object('id',id,'organizationId',organization_id,'status',status,'attempts',attempts,'requestId',request_id,'requestedBy',requested_by,'payload',payload,'ready',available_at<=now()) data FROM job_runs WHERE organization_id=$1 AND id=$2 AND kind='document_ingestion'`,
+        `SELECT jsonb_build_object('createdAt',created_at,'availableAt',available_at,'id',id,'organizationId',organization_id,'status',status,'attempts',attempts,'requestId',request_id,'requestedBy',requested_by,'payload',payload,'ready',available_at<=now()) data FROM job_runs WHERE organization_id=$1 AND id=$2 AND kind='document_ingestion'`,
         [organizationId, jobId],
       );
       if (!row.rows[0]) {

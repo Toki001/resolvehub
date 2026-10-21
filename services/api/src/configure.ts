@@ -1,3 +1,4 @@
+import { beginHttp } from '@resolvehub/telemetry';
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
 import type { NestExpressApplication } from '@nestjs/platform-express';
@@ -9,6 +10,13 @@ import { ApiExceptionFilter } from './error.filter.js';
 import type { ApiRequest } from './auth/context.js';
 
 export function configureApplication(app: NestExpressApplication, env: ApiEnv): void {
+  app.use((request: ApiRequest, response: Response, next: NextFunction) => {
+    beginHttp(request.path, request.method, request.headers.traceparent, (_span, done) => {
+      response.once('finish', () => done(response.statusCode));
+      response.once('close', () => done(response.writableFinished ? response.statusCode : 499));
+      next();
+    });
+  });
   app.use(helmet());
   app.use((request: ApiRequest, response: Response, next: NextFunction) => {
     const candidate = z.uuid().safeParse(request.headers['x-request-id']);
@@ -21,7 +29,13 @@ export function configureApplication(app: NestExpressApplication, env: ApiEnv): 
     origin: env.WEB_ORIGIN,
     methods: ['GET', 'POST', 'OPTIONS'],
     credentials: false,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key', 'X-Request-ID'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Idempotency-Key',
+      'X-Request-ID',
+      'traceparent',
+    ],
     exposedHeaders: ['X-Request-ID', 'Location', 'Retry-After'],
   });
   app.useBodyParser('json', { limit: '64kb' });

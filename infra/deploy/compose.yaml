@@ -18,6 +18,12 @@ x-runtime: &runtime
       max-size: '10m'
       max-file: '3'
 
+x-telemetry: &telemetry
+  OTEL_ENABLED: ${OTEL_ENABLED:-false}
+  OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-http://127.0.0.1:4318}
+  OTEL_TRACE_SAMPLE_RATIO: ${OTEL_TRACE_SAMPLE_RATIO:-0.1}
+  OTEL_METRIC_EXPORT_INTERVAL_MS: ${OTEL_METRIC_EXPORT_INTERVAL_MS:-5000}
+
 services:
   migrate:
     <<: *runtime
@@ -33,6 +39,7 @@ services:
     <<: *runtime
     image: ${API_IMAGE:?Set an API image digest}
     environment:
+      <<: *telemetry
       API_HOST: 0.0.0.0
       API_PORT: '3001'
       WEB_ORIGIN: ${WEB_ORIGIN:?Set the HTTPS public origin}
@@ -52,6 +59,7 @@ services:
     <<: *runtime
     image: ${WORKER_IMAGE:?Set a worker image digest}
     environment:
+      <<: *telemetry
       WORKER_HOST: 0.0.0.0
       WORKER_PORT: '3002'
       DATABASE_URL_FILE: /run/secrets/worker_database_url
@@ -76,6 +84,7 @@ services:
     <<: *runtime
     image: ${WEB_IMAGE:?Set a web image digest}
     environment:
+      <<: *telemetry
       HOSTNAME: 0.0.0.0
       PORT: '3000'
       API_URL: http://api:3001

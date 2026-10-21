@@ -67,7 +67,7 @@ async function app(
 ) {
   if (!network || interrupted) throw new Error('Verification network unavailable');
   const name = `rh-image-${component}-${randomUUID()}`;
-  const image = `resolvehub-ci/${component}:milestone07`;
+  const image = `resolvehub-ci/${component}:local`;
   assert.equal(
     await docker('image', 'inspect', '--format', '{{.Config.User}}', image),
     '10001:10001',
@@ -96,7 +96,11 @@ async function app(
     '-p',
     `127.0.0.1::${port}`,
     ...mounts,
-    ...Object.entries(env).flatMap(([key, value]) => ['--env', `${key}=${value}`]),
+    ...Object.entries({
+      OTEL_ENABLED: 'true',
+      OTEL_EXPORTER_OTLP_ENDPOINT: 'http://127.0.0.1:9',
+      ...env,
+    }).flatMap(([key, value]) => ['--env', `${key}=${value}`]),
     image,
   );
   const published = await docker('port', id, `${port}/tcp`);
@@ -182,7 +186,7 @@ async function main() {
         ...adminMount,
         '--env',
         'DATABASE_URL_FILE=/run/secrets/migration-db',
-        'resolvehub-ci/api:milestone07',
+        'resolvehub-ci/api:local',
         'migrate.mjs',
         '--grants',
       );

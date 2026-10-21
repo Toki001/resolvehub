@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   output: 'standalone',
   outputFileTracingRoot: fileURLToPath(new URL('../../', import.meta.url)),
+  serverExternalPackages: ['@resolvehub/telemetry'],
   transpilePackages: ['@resolvehub/contracts', '@resolvehub/generated'],
   async headers() {
     return [

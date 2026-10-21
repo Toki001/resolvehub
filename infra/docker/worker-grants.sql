@@ -17,3 +17,5 @@ GRANT SELECT,INSERT ON draft_responses TO resolvehub_worker;
 GRANT SELECT,INSERT,UPDATE,DELETE ON citations TO resolvehub_worker;
 GRANT EXECUTE ON FUNCTION drafting_dispatch_candidates() TO resolvehub_worker;
 GRANT EXECUTE ON FUNCTION drafting_lock_authority(uuid,uuid) TO resolvehub_worker;
+
+GRANT EXECUTE ON FUNCTION operational_queue_snapshot() TO resolvehub_worker;

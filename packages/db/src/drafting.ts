@@ -3,6 +3,8 @@ import type pg from 'pg';
 import { z } from 'zod';
 
 const jobSchema = z.object({
+  createdAt: z.coerce.date(),
+  availableAt: z.coerce.date(),
   id: z.uuid(),
   organizationId: z.uuid(),
   requestedBy: z.uuid().nullable(),
@@ -48,7 +50,7 @@ export class DraftSession {
         [`${organizationId}:${jobId}`],
       );
       const rows = await client.query<{ data: unknown }>(
-        "SELECT jsonb_build_object('id',id,'organizationId',organization_id,'requestedBy',requested_by,'payload',payload,'requestId',request_id) data FROM job_runs WHERE organization_id=$1 AND id=$2 AND kind='draft_response'",
+        "SELECT jsonb_build_object('createdAt',created_at,'availableAt',available_at,'id',id,'organizationId',organization_id,'requestedBy',requested_by,'payload',payload,'requestId',request_id) data FROM job_runs WHERE organization_id=$1 AND id=$2 AND kind='draft_response'",
         [organizationId, jobId],
       );
       if (!lock.rows[0]?.locked || !rows.rows[0]) {

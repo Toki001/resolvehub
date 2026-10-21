@@ -1,0 +1,81 @@
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+  # Application SDKs redact before buffering. This is a second boundary.
+  filter/privacy:
+    error_mode: propagate
+    traces:
+      span:
+        - 'Len(span.events) > 0 or Len(span.links) > 0'
+  transform/privacy:
+    error_mode: propagate
+    trace_statements:
+      - context: resource
+        statements:
+          - 'keep_keys(attributes, ["service.name", "service.version", "service.instance.id", "deployment.environment.name"])'
+      - context: span
+        statements:
+          - 'keep_keys(attributes, ["operation", "route", "method", "status_class", "outcome", "job_kind", "stage", "provider", "model", "field", "db.system", "db.operation"])'
+          - 'set(status.message, "")'
+          - 'set(name, "redacted") where not IsMatch(name, "^(http.request|web.status|graphql.request|graphql.resolve|queue.publish|queue.consume|ingestion.download|ingestion.extract|ingestion.chunk|ingestion.embed|ingestion.publish|rag.draft|rag.embedding|rag.retrieval|rag.rerank|rag.context|rag.generation|rag.validation|postgresql.query|redis.command|framework.request)$")'
+    metric_statements:
+      - context: resource
+        statements:
+          - 'keep_keys(attributes, ["service.name", "service.version", "service.instance.id", "deployment.environment.name"])'
+      - context: datapoint
+        statements:
+          - 'keep_keys(attributes, ["operation", "route", "method", "status_class", "outcome", "job_kind", "stage", "provider", "model", "token_type", "field"])'
+  batch:
+    timeout: 1s
+    send_batch_size: 256
+    send_batch_max_size: 512
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      queue_size: 2048
+    retry_on_failure:
+      initial_interval: 1s
+      max_interval: 5s
+      max_elapsed_time: 30s
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    metric_expiration: 2m
+    resource_to_telemetry_conversion:
+      enabled: true
+service:
+  extensions: [health_check]
+  telemetry:
+    logs:
+      level: error
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/privacy, transform/privacy, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/privacy, batch]
+      exporters: [prometheus]

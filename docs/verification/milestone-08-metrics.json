@@ -1,0 +1,267 @@
+{
+  "generatedAt": "2026-10-21T05:55:50.742Z",
+  "provider": "mock",
+  "embeddingModel": "resolvehub-synthetic-sha256-v1",
+  "environment": {
+    "os": "darwin",
+    "architecture": "arm64",
+    "cpus": 11,
+    "memoryGiB": 18,
+    "node": "v22.22.3",
+    "k6": "2.3.0",
+    "workerConcurrency": 2,
+    "draftRateLimitPerSecond": 10,
+    "telemetrySampleRatio": 1
+  },
+  "fixtureDigest": "01a5a9b8ed414977187300b8ac56fcc62a5c7a87ecb2761ca44b5d4a1bc74eb5",
+  "fixtureDocuments": 106,
+  "fixtureChunks": 136,
+  "drafts": {
+    "durationMs": 2416.595,
+    "metrics": {
+      "checks": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 1,
+          "passes": 150,
+          "fails": 0
+        },
+        "thresholds": {
+          "rate==1": {
+            "ok": true
+          }
+        }
+      },
+      "http_req_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(50)": 5.792,
+          "p(95)": 35.35209999999999,
+          "p(99)": 54.41477999999998,
+          "max": 84.314,
+          "min": 3.173,
+          "avg": 10.571544217687094,
+          "med": 5.792
+        }
+      },
+      "http_req_failed": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "fails": 735,
+          "rate": 0,
+          "passes": 0
+        }
+      },
+      "drafts_completed": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 30,
+          "rate": 12.414161247540443
+        },
+        "thresholds": {
+          "count==30": {
+            "ok": true
+          }
+        }
+      },
+      "http_reqs": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 735,
+          "rate": 304.1469505647409
+        }
+      },
+      "draft_cost_usd": {
+        "type": "trend",
+        "contains": "default",
+        "values": {
+          "min": 0,
+          "avg": 0,
+          "med": 0,
+          "p(50)": 0,
+          "p(95)": 0,
+          "p(99)": 0,
+          "max": 0
+        },
+        "thresholds": {
+          "max<=0.02": {
+            "ok": true
+          }
+        }
+      },
+      "draft_end_to_end_ms": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "min": 321,
+          "avg": 734,
+          "med": 927,
+          "p(50)": 927,
+          "p(95)": 961.85,
+          "p(99)": 969.97,
+          "max": 972
+        },
+        "thresholds": {
+          "p(95)<=6000": {
+            "ok": true
+          }
+        }
+      },
+      "draft_failures": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "rate": 0,
+          "passes": 0,
+          "fails": 30
+        },
+        "thresholds": {
+          "rate==0": {
+            "ok": true
+          }
+        }
+      }
+    }
+  },
+  "saturation": {
+    "durationMs": 3752.776,
+    "metrics": {
+      "http_req_failed": {
+        "values": {
+          "rate": 0,
+          "passes": 0,
+          "fails": 1005
+        },
+        "type": "rate",
+        "contains": "default"
+      },
+      "ingestions_rejected": {
+        "values": {
+          "count": 5,
+          "rate": 1.3323470412302787
+        },
+        "thresholds": {
+          "count==5": {
+            "ok": true
+          }
+        },
+        "type": "counter",
+        "contains": "default"
+      },
+      "http_reqs": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 1005,
+          "rate": 267.801755287286
+        }
+      },
+      "checks": {
+        "type": "rate",
+        "contains": "default",
+        "values": {
+          "passes": 2010,
+          "fails": 0,
+          "rate": 1
+        },
+        "thresholds": {
+          "rate==1": {
+            "ok": true
+          }
+        }
+      },
+      "ingestions_accepted": {
+        "type": "counter",
+        "contains": "default",
+        "values": {
+          "count": 1000,
+          "rate": 266.4694082460557
+        },
+        "thresholds": {
+          "count==1000": {
+            "ok": true
+          }
+        }
+      },
+      "http_req_duration": {
+        "type": "trend",
+        "contains": "time",
+        "values": {
+          "p(95)": 45.997,
+          "p(99)": 64.67975999999999,
+          "max": 78.366,
+          "min": 19.751,
+          "avg": 37.17649552238804,
+          "med": 36.703,
+          "p(50)": 36.703
+        }
+      }
+    }
+  },
+  "traceVerification": {
+    "webTraceId": "a3583bdf5b0a6d98d3aa06dac26752da",
+    "ingestionTraceId": "4921f7f220a7af12ffc21c06d497c89b",
+    "draftTraceId": "603d904ea4e1853937fdbd6e33b08866",
+    "draftingStages": true,
+    "propagatedAcrossThreeServices": true,
+    "ingestionStages": true,
+    "postgresAndRedisAutoInstrumentation": true,
+    "privacyCanariesAbsent": true
+  },
+  "operationalSnapshot": [
+    {
+      "job_kind": "document_ingestion",
+      "pending": 1000,
+      "active": 0,
+      "oldest_age_seconds": 4.164972,
+      "dead_letters": 0,
+      "retries": 0
+    },
+    {
+      "job_kind": "draft_response",
+      "pending": 0,
+      "active": 0,
+      "oldest_age_seconds": 0,
+      "dead_letters": 0,
+      "retries": 0
+    }
+  ],
+  "prometheusQueuePending": "1000",
+  "representativeDraftTraceStages": [
+    {
+      "operation": "queue.publish",
+      "durationMs": 0.841208,
+      "start": 1792562136903
+    },
+    {
+      "operation": "rag.embedding",
+      "durationMs": 0.124709,
+      "start": 1792562136913
+    },
+    {
+      "operation": "rag.retrieval",
+      "durationMs": 10.406791,
+      "start": 1792562136913
+    },
+    {
+      "operation": "rag.generation",
+      "durationMs": 0.882916,
+      "start": 1792562136925
+    },
+    {
+      "operation": "rag.draft",
+      "durationMs": 13.905875,
+      "start": 1792562136912
+    },
+    {
+      "operation": "queue.consume",
+      "durationMs": 29.850459,
+      "start": 1792562136904
+    }
+  ]
+}

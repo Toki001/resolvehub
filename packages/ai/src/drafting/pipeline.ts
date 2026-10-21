@@ -1,3 +1,4 @@
+import { observed, observe, count, modelLabel } from '@resolvehub/telemetry';
 import { performance } from 'node:perf_hooks';
 import { z } from 'zod';
 import type { EmbeddingProvider } from '../embedding.js';
@@ -38,7 +39,17 @@ export class DraftingPipeline {
     if (provider.model !== config.model || provider.name !== config.provider)
       throw new Error('Draft provider configuration mismatch');
   }
-  async run(
+  run(
+    input: { organizationId: string; question: string; remainingBudgetUsd?: number },
+    parent?: AbortSignal,
+  ) {
+    return observed(
+      'rag.draft',
+      { provider: this.provider.name, model: modelLabel(this.provider.model) },
+      () => this.execute(input, parent),
+    );
+  }
+  private async execute(
     input: { organizationId: string; question: string; remainingBudgetUsd?: number },
     parent: AbortSignal = new AbortController().signal,
   ) {
@@ -122,7 +133,11 @@ export class DraftingPipeline {
       if (unsafeInstruction(question)) return finish([], 'unsafe_request');
       const embeddingQuestion = question.slice(0, 1000);
       const vectors = await guarded(() =>
-        this.embeddings.embed([embeddingQuestion], controller.signal),
+        observed(
+          'rag.embedding',
+          { model: modelLabel(this.embeddings.model), provider: 'mock' },
+          () => this.embeddings.embed([embeddingQuestion], controller.signal),
+        ),
       );
       const vector = vectors[0];
       if (
@@ -134,8 +149,15 @@ export class DraftingPipeline {
       )
         throw new Error('Invalid query embedding');
       embeddingTokens = tokenEstimate(embeddingQuestion);
+      count('model_tokens', embeddingTokens, {
+        provider: 'mock',
+        model: modelLabel(this.embeddings.model),
+        token_type: 'embedding',
+      });
       retrieved = (
-        await guarded(() => this.retriever.search(input.organizationId, question, vector, 20))
+        await observed('rag.retrieval', {}, () =>
+          guarded(() => this.retriever.search(input.organizationId, question, vector, 20)),
+        )
       ).map((row) => evidenceSchema.parse(row));
       if (retrieved.some((row) => row.organizationId !== input.organizationId))
         throw new Error('Retrieval scope violation');
@@ -144,6 +166,7 @@ export class DraftingPipeline {
         5,
       );
       retrievalLatencyMs = performance.now() - start;
+      observe('rag_retrieval_duration_seconds', retrievalLatencyMs / 1000);
       const render = () =>
         `${SYSTEM_PROMPT}\nTicket JSON: ${JSON.stringify({ question })}\nEvidence JSON: ${JSON.stringify(context.map(({ chunkId, text }) => ({ chunkId, text })))}`;
       for (const row of retrieved) {
@@ -160,13 +183,28 @@ export class DraftingPipeline {
       )
         return finish([], 'cost_budget');
       const generationStart = performance.now();
-      const result = await guarded(() =>
-        this.provider.generate(
-          { prompt, question, evidence: context, maxOutputTokens: this.config.maxOutputTokens },
-          controller.signal,
-        ),
-      );
+      const result = await observed(
+        'rag.generation',
+        { provider: this.provider.name, model: modelLabel(this.provider.model) },
+        () =>
+          guarded(() =>
+            this.provider.generate(
+              { prompt, question, evidence: context, maxOutputTokens: this.config.maxOutputTokens },
+              controller.signal,
+            ),
+          ),
+      ).catch((error) => {
+        count('model_usage_incomplete', 1, {
+          provider: this.provider.name,
+          model: modelLabel(this.provider.model),
+        });
+        throw error;
+      });
       generationLatencyMs = performance.now() - generationStart;
+      observe('generation_duration_seconds', generationLatencyMs / 1000, {
+        provider: this.provider.name,
+        model: modelLabel(this.provider.model),
+      });
       inputTokens = z.number().int().min(0).max(1000000).parse(result.inputTokens);
       outputTokens = z
         .number()
@@ -177,6 +215,20 @@ export class DraftingPipeline {
       tokenCountSource = z
         .enum(['mock_estimate', 'provider_reported'])
         .parse(result.tokenCountSource);
+      count('model_tokens', inputTokens, {
+        provider: this.provider.name,
+        model: modelLabel(this.provider.model),
+        token_type: 'input',
+      });
+      count('model_tokens', outputTokens, {
+        provider: this.provider.name,
+        model: modelLabel(this.provider.model),
+        token_type: 'output',
+      });
+      count('model_cost_usd', estimateCost(inputTokens, outputTokens, this.config), {
+        provider: this.provider.name,
+        model: modelLabel(this.provider.model),
+      });
       if (estimateCost(inputTokens, outputTokens, this.config) > budget)
         return finish([], 'cost_budget');
       const output = generationOutputSchema.safeParse(result.output);

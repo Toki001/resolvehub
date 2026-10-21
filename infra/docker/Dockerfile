@@ -12,6 +12,7 @@ COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/generated/package.json ./packages/generated/
 COPY packages/db/package.json ./packages/db/
 COPY packages/ai/package.json ./packages/ai/
+COPY packages/telemetry/package.json ./packages/telemetry/
 # Optional private registry credentials exist only during this instruction.
 # No application credentials or public NEXT_PUBLIC_* secrets belong in builds.
 RUN --mount=type=cache,id=resolvehub-pnpm,target=/pnpm/store \

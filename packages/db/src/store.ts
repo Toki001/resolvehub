@@ -1,3 +1,4 @@
+import { captureTraceContext } from '@resolvehub/telemetry';
 import { randomUUID } from 'node:crypto';
 import type pg from 'pg';
 import { z } from 'zod';
@@ -323,8 +324,8 @@ export class TenantRepository {
   ): Promise<string> {
     const id = randomUUID();
     await this.connection.query(
-      `INSERT INTO job_runs (id,organization_id,kind,resource_id,payload,request_id,replay_of,requested_by)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      `INSERT INTO job_runs (id,organization_id,kind,resource_id,payload,request_id,replay_of,requested_by,trace_context)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [
         id,
         this.organizationId,
@@ -334,6 +335,7 @@ export class TenantRepository {
         requestId,
         replayOf,
         requestedBy,
+        JSON.stringify(captureTraceContext()),
       ],
     );
     return id;

@@ -5,7 +5,7 @@ import * as schema from './schema.js';
 export { migrate } from './migrate.js';
 export { ContractStore, TenantRepository, StoreConflict } from './store.js';
 export type { MutationReceipt, Actor, PageWindow, TicketFilter } from './store.js';
-export const CONTRACT_MIGRATION = '0010_draft_authority_fence.sql';
+export const CONTRACT_MIGRATION = '0011_trace_context_and_operational_metrics.sql';
 
 // Pool lifecycle belongs to the owning service; no process-global connections.
 export function createDatabase(
@@ -31,3 +31,5 @@ export type { IngestionSource, IndexedChunk, IngestionFailureRecord } from './in
 
 export { DraftSession } from './drafting.js';
 export type { DraftPublication } from './drafting.js';
+
+export { jobTraceContext, queueSnapshot } from './telemetry.js';

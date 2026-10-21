@@ -1,3 +1,4 @@
+import type { Context as TelemetryContext } from '@resolvehub/telemetry';
 import type { Request, Response } from 'express';
 import type { components } from '@resolvehub/generated';
 import { ApiFault } from '../application/fault.js';
@@ -10,6 +11,7 @@ export interface ApiRequest extends Request {
   authentication?: Promise<Identity>;
 }
 export interface GraphqlContext {
+  telemetryContext?: TelemetryContext;
   req: ApiRequest;
   res: Response;
 }

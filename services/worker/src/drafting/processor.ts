@@ -1,3 +1,4 @@
+import { observe, count } from '@resolvehub/telemetry';
 import { UnrecoverableError } from 'bullmq';
 import { DraftSession } from '@resolvehub/db';
 import type { createDatabase } from '@resolvehub/db';
@@ -30,6 +31,14 @@ export function draftProcessor(dependencies: {
     try {
       const claim = await session.claim();
       if (claim === 'skip') return;
+      observe(
+        'queue_wait_duration_seconds',
+        Math.max(
+          0,
+          Date.now() - Math.max(session.job.createdAt.getTime(), session.job.availableAt.getTime()),
+        ) / 1000,
+        { job_kind: 'draft_response' },
+      );
       if (claim === 'exhausted') throw new IngestionFailure('WORKER_INTERRUPTED');
       const source = await session.source();
       if (!source) throw new IngestionFailure('RESOURCE_UNAVAILABLE', true);
@@ -59,6 +68,9 @@ export function draftProcessor(dependencies: {
       };
       if (!(await session.complete({ ...result, ...result.generation }, source.question)))
         throw new IngestionFailure('EVIDENCE_CHANGED', true);
+      count('drafts_completed', 1, { outcome: result.generation.outcome });
+      observe('draft_cost_usd', result.generation.estimatedCostUsd);
+      observe('draft_duration_seconds', (Date.now() - session.job.createdAt.getTime()) / 1000);
     } catch (error) {
       const failure = classify(error),
         delay = retryDelay(
@@ -67,8 +79,11 @@ export function draftProcessor(dependencies: {
           Math.random,
           failure.retryAfterMs,
         );
-      if (await session.fail(failure.category, failure.permanent, delay))
-        throw new UnrecoverableError(failure.category);
+      const terminal = await session.fail(failure.category, failure.permanent, delay);
+      count(terminal ? 'queue_dead_letter_events' : 'queue_retries', 1, {
+        job_kind: 'draft_response',
+      });
+      if (terminal) throw new UnrecoverableError(failure.category);
       throw new RetryIngestion(delay);
     } finally {
       await session.close();

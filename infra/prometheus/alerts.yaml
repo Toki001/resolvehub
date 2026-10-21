@@ -1,0 +1,78 @@
+groups:
+  - name: resolvehub
+    rules:
+      - alert: ResolveHubRequestFailures
+        expr: sum(rate(resolvehub_http_requests_total{status_class="5xx"}[5m])) / clamp_min(sum(rate(resolvehub_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: More than 5% of HTTP requests fail
+          runbook_url: docs/operations/observability.md#request-failures
+      - alert: ResolveHubGraphqlFailures
+        expr: sum(rate(resolvehub_graphql_requests_total{outcome="error"}[5m])) / clamp_min(sum(rate(resolvehub_graphql_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: More than 5% of GraphQL operations fail
+          runbook_url: docs/operations/observability.md#request-failures
+      - alert: ResolveHubDraftLatency
+        expr: histogram_quantile(0.95, sum by (le) (rate(resolvehub_draft_duration_seconds_bucket[5m]))) > 6
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: Draft completion p95 exceeds the six-second target
+          runbook_url: docs/operations/observability.md#slow-drafts
+      - alert: ResolveHubQueueNearCapacity
+        expr: max(resolvehub_queue_pending{job_kind="document_ingestion"}) >= 900
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: Document ingestion backlog is near its 1000-request limit
+          runbook_url: docs/operations/observability.md#queue-and-dead-letters
+      - alert: ResolveHubQueueFull
+        expr: max(resolvehub_queue_pending{job_kind="document_ingestion"}) >= 1000
+        for: 1m
+        labels: { severity: critical }
+        annotations:
+          summary: Document ingestion admission is saturated
+          runbook_url: docs/operations/observability.md#queue-and-dead-letters
+      - alert: ResolveHubQueueAge
+        expr: max by (job_kind) (resolvehub_queue_oldest_age_seconds) > 60
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: Oldest pending job has waited more than a minute
+          runbook_url: docs/operations/observability.md#queue-and-dead-letters
+      - alert: ResolveHubDeadLetters
+        expr: max by (job_kind) (resolvehub_queue_dead_letters) > 0
+        for: 2m
+        labels: { severity: warning }
+        annotations:
+          summary: Durable dead-letter queue requires review
+          runbook_url: docs/operations/observability.md#queue-and-dead-letters
+      - alert: ResolveHubDraftCost
+        expr: sum(increase(resolvehub_draft_cost_usd_count[5m])) - sum(increase(resolvehub_draft_cost_usd_bucket{le="0.02"}[5m])) > 0
+        labels: { severity: critical }
+        annotations:
+          summary: A completed draft exceeded the two-cent cost ceiling
+          runbook_url: docs/operations/observability.md#model-usage
+      - alert: ResolveHubUnknownModelUsage
+        expr: sum(increase(resolvehub_model_usage_incomplete_total[5m])) > 0
+        labels: { severity: warning }
+        annotations:
+          summary: A provider call failed before complete usage could be recorded
+          runbook_url: docs/operations/observability.md#model-usage
+      - alert: ResolveHubCollectorDown
+        expr: up{job="otel-collector"} == 0
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: OpenTelemetry Collector is unavailable
+          runbook_url: docs/operations/observability.md#telemetry-outage
+      - alert: ResolveHubQueueObservationStale
+        expr: max(resolvehub_queue_observation_age_seconds) > 15
+        for: 1m
+        labels: { severity: warning }
+        annotations:
+          summary: Worker cannot refresh authoritative queue metrics
+          runbook_url: docs/operations/observability.md#telemetry-outage

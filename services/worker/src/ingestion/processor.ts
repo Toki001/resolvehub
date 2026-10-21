@@ -1,3 +1,5 @@
+import { observed, observe, count, modelLabel } from '@resolvehub/telemetry';
+import { tokenEstimate } from '@resolvehub/ai';
 import type { EmbeddingProvider } from '@resolvehub/ai';
 import { IngestionSession, EMBEDDING_MODEL, EMBEDDING_DIMENSIONS } from '@resolvehub/db';
 import type { IngestionSource, createDatabase } from '@resolvehub/db';
@@ -38,6 +40,7 @@ export function ingestionProcessor(dependencies: Dependencies) {
       parsed.data.jobId,
     );
     if (!session) return;
+    const started = performance.now();
     const controller = new AbortController(),
       stop = () => controller.abort();
     if (dependencies.signal?.aborted) stop();
@@ -47,6 +50,14 @@ export function ingestionProcessor(dependencies: Dependencies) {
     try {
       const claim = await session.claim();
       if (claim === 'skip') return;
+      observe(
+        'queue_wait_duration_seconds',
+        Math.max(
+          0,
+          Date.now() - Math.max(session.job.createdAt.getTime(), session.job.availableAt.getTime()),
+        ) / 1000,
+        { job_kind: 'document_ingestion' },
+      );
       if (claim === 'exhausted') throw new IngestionFailure('WORKER_INTERRUPTED');
       const source = await session.source();
       if (!source) throw new IngestionFailure('RESOURCE_UNAVAILABLE', true);
@@ -54,36 +65,67 @@ export function ingestionProcessor(dependencies: Dependencies) {
       let text = await session.extraction();
       if (!text) {
         await session.stage('download');
-        const bytes = await bounded(
-          (signal) => dependencies.storage.fetch(source, session.job.organizationId, signal),
-          10000,
-          controller.signal,
-          'STORAGE_TIMEOUT',
+        const bytes = await observed(
+          'ingestion.download',
+          { job_kind: 'document_ingestion', stage: 'download' },
+          () =>
+            bounded(
+              (signal) => dependencies.storage.fetch(source, session.job.organizationId, signal),
+              10000,
+              controller.signal,
+              'STORAGE_TIMEOUT',
+            ),
         );
         await session.stage('extract');
-        text = await bounded(
-          (signal) => extractText(bytes, source.mediaType, dependencies.pdf, signal),
-          10000,
-          controller.signal,
-          'EXTRACTION_TIMEOUT',
+        text = await observed(
+          'ingestion.extract',
+          { job_kind: 'document_ingestion', stage: 'extract' },
+          () =>
+            bounded(
+              (signal) => extractText(bytes, source.mediaType, dependencies.pdf, signal),
+              10000,
+              controller.signal,
+              'EXTRACTION_TIMEOUT',
+            ),
         );
         await session.saveExtraction(text);
       }
       await session.stage('chunk');
-      await session.stageChunks(chunkText(text, source.versionId));
+      await observed('ingestion.chunk', { job_kind: 'document_ingestion', stage: 'chunk' }, () =>
+        session.stageChunks(chunkText(text, source.versionId)),
+      );
       await session.stage('embed');
       for (let batch = 0; batch < 16; batch++) {
         const rows = await session.pendingEmbeddings();
         if (!rows.length) break;
         await dependencies.limiter.acquire(controller.signal);
-        const embeddings = await bounded(
-          (signal) =>
-            dependencies.provider.embed(
-              rows.map((row) => row.text),
-              signal,
+        const embeddings = await observed(
+          'ingestion.embed',
+          {
+            job_kind: 'document_ingestion',
+            stage: 'embed',
+            model: modelLabel(dependencies.provider.model),
+            provider: 'mock',
+          },
+          () =>
+            bounded(
+              (signal) =>
+                dependencies.provider.embed(
+                  rows.map((row) => row.text),
+                  signal,
+                ),
+              dependencies.providerTimeoutMs ?? 5000,
+              controller.signal,
             ),
-          dependencies.providerTimeoutMs ?? 5000,
-          controller.signal,
+        );
+        count(
+          'model_tokens',
+          rows.reduce((total, row) => total + tokenEstimate(row.text), 0),
+          {
+            model: modelLabel(dependencies.provider.model),
+            provider: 'mock',
+            token_type: 'embedding',
+          },
         );
         if (embeddings.length !== rows.length) throw new IngestionFailure('INVALID_EMBEDDING');
         await session.saveEmbeddings(
@@ -102,7 +144,15 @@ export function ingestionProcessor(dependencies: Dependencies) {
       }
       if (controller.signal.aborted) throw new IngestionFailure('WORKER_INTERRUPTED');
       await session.stage('publish');
-      if (!(await session.complete())) throw new IngestionFailure('RESOURCE_SUPERSEDED', true);
+      await observed(
+        'ingestion.publish',
+        { job_kind: 'document_ingestion', stage: 'publish' },
+        async () => {
+          if (!(await session.complete())) throw new IngestionFailure('RESOURCE_SUPERSEDED', true);
+        },
+      );
+      count('ingestion_completed', 1, { outcome: 'success' });
+      observe('ingestion_duration_seconds', (performance.now() - started) / 1000);
     } catch (error) {
       const failure = classify(error),
         delayMs = retryDelay(
@@ -117,6 +167,9 @@ export function ingestionProcessor(dependencies: Dependencies) {
         permanent: failure.permanent,
         replayEligible: !failure.permanent,
         delayMs,
+      });
+      count(terminal ? 'queue_dead_letter_events' : 'queue_retries', 1, {
+        job_kind: 'document_ingestion',
       });
       if (terminal) throw new UnrecoverableError(failure.category);
       throw new RetryIngestion(delayMs);

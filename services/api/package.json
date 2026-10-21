@@ -28,7 +28,8 @@
     "@resolvehub/generated": "workspace:*",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
-    "yaml": "^2.8.1"
+    "yaml": "^2.8.1",
+    "@resolvehub/telemetry": "workspace:*"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",

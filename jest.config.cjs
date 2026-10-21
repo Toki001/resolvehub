@@ -23,7 +23,8 @@ module.exports = {
     ],
   },
   moduleNameMapper: {
-    '^@resolvehub/(contracts|db|ai)$': '<rootDir>/packages/$1/src/index.ts',
+    '^@resolvehub/telemetry/bootstrap$': '<rootDir>/packages/telemetry/src/bootstrap.ts',
+    '^@resolvehub/(contracts|db|ai|telemetry)$': '<rootDir>/packages/$1/src/index.ts',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   clearMocks: true,

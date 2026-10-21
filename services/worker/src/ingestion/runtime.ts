@@ -1,3 +1,5 @@
+import { observed, traceContext, queueTraceMetadata, SpanKind } from '@resolvehub/telemetry';
+import { jobTraceContext } from '@resolvehub/db';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { S3Client } from '@aws-sdk/client-s3';
@@ -43,7 +45,19 @@ export async function dispatchIngestions(
       const state = await existing.getState();
       if (state === 'completed' || state === 'failed') await existing.remove();
     }
-    await queue.add('indexDocument', data, { jobId: id });
+    const parent = await jobTraceContext(pool, data.organizationId, data.jobId);
+    await observed(
+      'queue.publish',
+      { job_kind: 'document_ingestion' },
+      () =>
+        queue.add('indexDocument', data, {
+          jobId: id,
+          telemetry: { metadata: queueTraceMetadata(), omitContext: true },
+        }),
+      traceContext(parent),
+      SpanKind.PRODUCER,
+    );
+
     // Delivery and this acknowledgement need not be atomic: queue identity and
     // the version lock make a repeated handoff harmless.
     const client = await pool.connect();
@@ -108,16 +122,27 @@ export function createIngestionRuntime(
     attemptTimeoutMs: env.INGESTION_ATTEMPT_TIMEOUT_MS,
     signal: controller.signal,
   });
-  const worker = new Worker(INGESTION_QUEUE, (job) => process(job.data), {
-    connection: consumer,
-    prefix: env.INGESTION_QUEUE_PREFIX,
-    concurrency: env.WORKER_CONCURRENCY,
-    lockDuration: 30000,
-    maxStalledCount: 1,
-    settings: {
-      backoffStrategy: ingestionBackoff,
+  const worker = new Worker(
+    INGESTION_QUEUE,
+    (job) =>
+      observed(
+        'queue.consume',
+        { job_kind: 'document_ingestion' },
+        () => process(job.data),
+        traceContext(job.opts.telemetry?.metadata),
+        SpanKind.CONSUMER,
+      ),
+    {
+      connection: consumer,
+      prefix: env.INGESTION_QUEUE_PREFIX,
+      concurrency: env.WORKER_CONCURRENCY,
+      lockDuration: 30000,
+      maxStalledCount: 1,
+      settings: {
+        backoffStrategy: ingestionBackoff,
+      },
     },
-  });
+  );
   worker.on('error', () => console.warn('Ingestion consumer connection interrupted'));
   worker.on('failed', () => console.warn('Ingestion attempt failed; inspect durable job status'));
   let stopped = false,

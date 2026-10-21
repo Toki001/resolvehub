@@ -17,6 +17,7 @@ Read this file and `CODEX.md` before editing. Implement only the requested miles
 - `packages/contracts`: transport schemas and canonical OpenAPI/GraphQL documents. No service or database imports.
 - `packages/generated`: generated types and client wrappers only. Run `pnpm generate`; never hand-edit `src/rest.ts`. Contract drift fails CI.
 - `packages/db`: Drizzle schema, migrations and scoped repositories. No web or AI dependencies. `packages/ai`: provider abstractions, retrieval and evidence validation; no HTTP controllers or direct user authorization.
+- `packages/telemetry`: operational instrumentation only; no domain/service imports. Initialize before application imports. New spans, labels and metrics require an allowlist/privacy review; never export customer text, resource/tenant IDs, secrets, SQL or provider payloads.
 - Shared packages must not import apps/services. Keep service-specific environment schemas inside each service. Add dependencies only when used.
 
 ## Tenant isolation and security

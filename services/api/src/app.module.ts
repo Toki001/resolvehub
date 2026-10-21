@@ -1,3 +1,4 @@
+import { shutdownTelemetry } from '@resolvehub/telemetry/bootstrap';
 import { createRequire } from 'node:module';
 import { Module } from '@nestjs/common';
 import { GraphQLModule } from '@nestjs/graphql';
@@ -39,6 +40,7 @@ import type { GraphqlContext } from './auth/context.js';
   ],
   controllers: [HealthController, SupportController, WebhookController],
   providers: [
+    { provide: 'TELEMETRY_LIFECYCLE', useValue: { onApplicationShutdown: shutdownTelemetry } },
     { provide: API_ENV, useFactory: () => parseApiEnv(process.env) },
     DatabaseService,
     ContractValidator,

@@ -43,6 +43,8 @@ jobs:
       - name: Format, lint, strict types, contract compatibility and Jest units
         run: pnpm check
       - run: pnpm build
+      - name: Validate Collector, dashboards and Prometheus alert firing
+        run: pnpm observability:check
 
   integration:
     name: PostgreSQL, Redis, migrations and critical coverage

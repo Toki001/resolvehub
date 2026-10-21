@@ -404,6 +404,7 @@ export const jobRuns = pgTable(
     attempts: integer().default(0).notNull(),
     reasonCode: text('reason_code'),
     requestId: uuid('request_id').notNull(),
+    traceContext: jsonb('trace_context').$type<{ traceparent?: string }>().notNull().default({}),
     replayOf: uuid('replay_of'),
     requestedBy: uuid('requested_by'),
     availableAt: timestamp('available_at', { withTimezone: true, precision: 3 })
@@ -438,6 +439,10 @@ export const jobRuns = pgTable(
     index('job_runs_tenant_state').on(t.organizationId, t.status, t.createdAt),
     check('replay_is_distinct', sql`${t.replayOf} is null or ${t.replayOf}<>${t.id}`),
     check('job_runs_attempts_check', sql`${t.attempts}>=0`),
+    check(
+      'job_trace_context_safe',
+      sql`jsonb_typeof(${t.traceContext})='object' and ${t.traceContext}-'traceparent'='{}'::jsonb and (not ${t.traceContext} ? 'traceparent' or jsonb_typeof(${t.traceContext}->'traceparent')='string' and length(${t.traceContext}->>'traceparent')=55 and ${t.traceContext}->>'traceparent' ~ '^00-[a-f0-9]{32}-[a-f0-9]{16}-0[01]$')`,
+    ),
     check(
       'job_runs_kind_check',
       sql`${t.kind} in ('document_ingestion','draft_response','ticket_webhook')`,

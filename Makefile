@@ -70,3 +70,16 @@ images:
 
 image-smoke:
 	pnpm docker:smoke
+
+.PHONY: observability observability-down observability-check performance
+observability:
+	pnpm observability:up
+
+observability-down:
+	pnpm observability:down
+
+observability-check:
+	pnpm observability:check
+
+performance:
+	pnpm perf:run
