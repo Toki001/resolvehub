@@ -1,5 +1,6 @@
 import { Check, LockKeyhole, ArrowRight } from 'lucide-react';
 import { HealthPanel } from '@/components/health-panel';
+import { release } from '@/lib/release';
 
 export const metadata = { title: 'Settings' };
 export default function Settings() {
@@ -35,9 +36,14 @@ export default function Settings() {
         <div className="list-heading">
           <div>
             <h2 id="milestone-title">Workspace availability</h2>
-            <p>Milestone 06 adds cited support drafts with mandatory human review.</p>
+            <p>
+              Milestones 07 and 08 add delivery automation and observability. Dashboard access
+              remains unconnected.
+            </p>
           </div>
-          <span className="milestone-badge">06 / 08</span>
+          <span className="milestone-badge">
+            {release.milestone} / {release.totalMilestones}
+          </span>
         </div>
         <div className="milestone-grid">
           <div>
@@ -47,6 +53,8 @@ export default function Settings() {
               'Live service and dependency health',
               'Validated service configuration',
               'Operational background queue probe',
+              'Locally verified CI/CD workflows and production images',
+              'OpenTelemetry instrumentation and local operations dashboards',
             ].map((text) => (
               <p key={text}>
                 <Check size={15} />

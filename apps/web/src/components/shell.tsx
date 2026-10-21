@@ -13,6 +13,7 @@ import {
   ShieldCheck,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { release } from '@/lib/release';
 
 const navigation = [
   { href: '/tickets', label: 'Tickets', icon: Inbox },
@@ -100,7 +101,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <strong>{current}</strong>
           </div>
           <div className="topbar-right">
-            <span className="milestone-badge">Milestone 06</span>
+            <span className="milestone-badge">Milestone {release.milestone}</span>
             <Link href="/settings#health" className="help-link" aria-label="View system health">
               <CircleHelp size={18} />
             </Link>

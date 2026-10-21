@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { release } from '@/lib/release';
 import {
   ArrowRight,
   ArrowUpRight,
@@ -23,8 +24,7 @@ const sections = {
       'Ticket intake is available through authorized integrations. Dashboard sign-in and conversation access are not connected yet.',
     icon: Inbox,
     columns: ['Conversation', 'Customer', 'Status', 'Updated'],
-    next: 'Authenticated ticket intake',
-    step: '02',
+    next: 'Dashboard sign-in and ticket access',
   },
   knowledge: {
     eyebrow: 'ANSWERS START WITH GOOD SOURCES',
@@ -37,8 +37,7 @@ const sections = {
       'Document indexing is available through authorized integrations. Dashboard uploads and knowledge access are not connected yet.',
     icon: BookOpen,
     columns: ['Document', 'Source', 'Status', 'Updated'],
-    next: 'Versioned documents and ingestion',
-    step: '03–04',
+    next: 'Dashboard uploads and knowledge access',
   },
   review: {
     eyebrow: 'YOUR TEAM HAS THE FINAL SAY',
@@ -51,8 +50,7 @@ const sections = {
       'Cited support drafts and human approval are available through authorized integrations. Dashboard review access is not connected yet.',
     icon: CheckCheck,
     columns: ['Draft', 'Ticket', 'Evidence', 'Created'],
-    next: 'Cited drafts and human approval',
-    step: '06',
+    next: 'Dashboard draft review and approval',
   },
 };
 
@@ -122,7 +120,7 @@ export function WorkspacePage({ section }: { section: keyof typeof sections }) {
             <LockKeyhole size={13} />
             Dashboard records are not connected.
           </span>
-          <span>Milestone 06</span>
+          <span>Milestone {release.milestone}</span>
         </div>
       </section>
       <div className="info-grid">
@@ -152,9 +150,11 @@ export function WorkspacePage({ section }: { section: keyof typeof sections }) {
         </section>
       </div>
       <div className="next-step">
-        <span className="step-number">{content.step}</span>
+        <span className="step-number" aria-hidden="true">
+          <LockKeyhole size={15} />
+        </span>
         <div>
-          <span>COMING NEXT FOR THIS WORKSPACE</span>
+          <span>DASHBOARD CONNECTION STILL NEEDED</span>
           <strong>{content.next}</strong>
         </div>
         <Link href="/settings#milestone" aria-label="View milestone details">
