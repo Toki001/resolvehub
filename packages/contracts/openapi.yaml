@@ -11,6 +11,24 @@ servers:
 security:
   - BearerAuth: []
 paths:
+  /v1/ai/status:
+    get:
+      operationId: getAiProviderStatus
+      summary: Authenticated provider configuration and recent availability without cloud probes
+      responses:
+        '200':
+          description: Safe AI status for this verified workspace
+          headers:
+            X-Request-ID:
+              schema: { type: string, format: uuid }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AiProviderStatus'
+        '401':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /health/live:
     get:
       operationId: getLiveness
@@ -1132,6 +1150,52 @@ components:
       name: X-Webhook-Signature
       description: HMAC-SHA256, used with X-Webhook-ID and X-Webhook-Timestamp.
   schemas:
+    AiProviderStatus:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          mode,
+          provider,
+          model,
+          embeddingModel,
+          canGenerate,
+          freeTierVerified,
+          reasonCode,
+          message,
+          retryAfterSeconds,
+          lastSuccessfulAt,
+        ]
+      properties:
+        mode:
+          type: string
+          enum: [synthetic, gemini_live, unavailable]
+        provider:
+          type: string
+          enum: [mock, ollama, gemini]
+        model:
+          type: string
+          maxLength: 200
+        embeddingModel:
+          type: string
+          maxLength: 200
+        canGenerate:
+          type: boolean
+        freeTierVerified:
+          type: boolean
+        reasonCode:
+          type: [string, 'null']
+          maxLength: 80
+        message:
+          type: string
+          maxLength: 500
+        retryAfterSeconds:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 604800
+        lastSuccessfulAt:
+          type: [string, 'null']
+          format: date-time
     Error:
       type: object
       additionalProperties: false
@@ -1154,6 +1218,17 @@ components:
             - CAPACITY_EXCEEDED
             - DEPENDENCY_UNAVAILABLE
             - INTERNAL_ERROR
+            - GEMINI_NOT_CONFIGURED
+            - GEMINI_FREE_TIER_UNVERIFIED
+            - GEMINI_SYNTHETIC_SCOPE_REQUIRED
+            - GEMINI_QUOTA_EXHAUSTED
+            - GEMINI_MINUTE_LIMIT
+            - GEMINI_DAILY_LIMIT
+            - GEMINI_BUSY
+            - GEMINI_TIMEOUT
+            - GEMINI_UNAVAILABLE
+            - GEMINI_MODEL_UNAVAILABLE
+            - GEMINI_INVALID_RESPONSE
         message:
           type: string
         requestId:
@@ -1554,7 +1629,7 @@ components:
           type: [string, 'null']
         provider:
           type: string
-          enum: [mock, ollama]
+          enum: [mock, ollama, gemini]
         model:
           type: string
         embeddingModel:
@@ -1596,7 +1671,7 @@ components:
               format: date
             source:
               type: string
-              enum: [mock, operator_configured]
+              enum: [mock, operator_configured, google_free_tier_verified]
         retrievalLatencyMs:
           type: number
           minimum: 0

@@ -2,6 +2,10 @@
 
 A multi-tenant AI customer support platform, built one verified milestone at a time. **Milestones 01–08 provide authenticated contract APIs, versioned persistence, durable ingestion, automated verification, evidence-bound support drafting, CI/CD and private operational telemetry.** The full roadmap is in [CODEX.md](CODEX.md); engineering rules are in [AGENTS.md](AGENTS.md).
 
+Milestone 09 adds opt-in Google Gemini through the official SDK, locked to `gemini-2.5-flash-lite`, with no paid fallback. It requires a manually verified Free Tier project with billing disabled, private backend `GEMINI_API_KEY`, a 24-hour key-bound verification and approved synthetic scope. Defaults: 2 requests/minute, 10/day, one concurrent call. Quota exhaustion pauses live drafting. The live diagnostic returned **404/NOT_FOUND** for the requested model, so Gemini Live is not claimed working; Google restricts 2.5 access to prior users. See [configuration and recovery](docs/operations/gemini-free-tier.md).
+
+Google may use Free Tier inputs/outputs to improve its products; use synthetic records only. Keys remain backend-only. Free API estimates exclude infrastructure costs. Embeddings remain synthetic/64 because this project's `gemini-embedding-2` free quota is unconfirmed; no index is replaced or incompatible vector space mixed. Offline usage and all internal review/message workflows remain available.
+
 The dashboard connects verified organization members to persisted tickets, knowledge uploads, cited drafts and human review. Approved replies become internal ticket messages in the same transaction as their review; they are never marked externally delivered. Browser sessions use HttpOnly cookies and server-side API calls. Document ingestion runs through MinIO, validated extraction/chunking, deterministic embeddings and atomic publication, with bounded BullMQ retries and a PostgreSQL dead-letter queue. Generation uses the explicitly labeled extractive mock by default, with an optional Ollama adapter. External customer delivery and webhook domain processing remain deferred.
 
 ![Internal ticket conversation](docs/verification/internal-support-desktop.png)

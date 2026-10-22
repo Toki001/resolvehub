@@ -6,6 +6,7 @@ import type { DraftConfig } from './config.js';
 import { tokenEstimate } from './config.js';
 
 export interface GenerationInput {
+  organizationId?: string;
   prompt: string;
   question: string;
   evidence: readonly Evidence[];
@@ -18,7 +19,7 @@ export interface GenerationResult {
   tokenCountSource: 'mock_estimate' | 'provider_reported';
 }
 export interface GenerationProvider {
-  readonly name: 'mock' | 'ollama';
+  readonly name: 'mock' | 'ollama' | 'gemini';
   readonly model: string;
   generate(input: GenerationInput, signal: AbortSignal): Promise<GenerationResult>;
 }

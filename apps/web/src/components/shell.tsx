@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { release } from '@/lib/release';
+import { AiProviderStatus } from './ai-provider-status';
 
 const navigation = [
   { href: '/tickets', label: 'Tickets', icon: Inbox },
@@ -101,6 +102,7 @@ export function Shell({ children }: { children: ReactNode }) {
             <strong>{current}</strong>
           </div>
           <div className="topbar-right">
+            <AiProviderStatus />
             <span className="milestone-badge">Milestone {release.milestone}</span>
             <Link href="/settings#health" className="help-link" aria-label="View system health">
               <CircleHelp size={18} />

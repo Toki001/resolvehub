@@ -7,8 +7,11 @@ import {
   ExtractiveMockProvider,
   OllamaDraftProvider,
   SyntheticEmbeddingProvider,
+  GeminiDraftProvider,
+  parseGeminiConfig,
 } from '@resolvehub/ai';
-import type { GenerationProvider, DraftConfig } from '@resolvehub/ai';
+import type { GenerationProvider, DraftConfig, GeminiConfig } from '@resolvehub/ai';
+import { RedisGeminiBudget } from './gemini-budget.js';
 import { KnowledgeRepository } from '@resolvehub/db';
 import type { createDatabase } from '@resolvehub/db';
 import { draftProcessor } from './processor.js';
@@ -21,6 +24,7 @@ export function createDraftRuntime(
   env: WorkerEnv,
   pool: ReturnType<typeof createDatabase>['pool'],
   config: DraftConfig,
+  access: GeminiConfig = parseGeminiConfig({}),
 ) {
   const producer = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: 1,
@@ -41,8 +45,13 @@ export function createDraftRuntime(
     defaultJobOptions: ingestionOptions,
   });
   queue.on('error', () => console.warn('Draft queue interrupted'));
+  const budget = new RedisGeminiBudget(producer, access, env.INGESTION_QUEUE_PREFIX);
   const delegate =
-    config.provider === 'mock' ? new ExtractiveMockProvider() : new OllamaDraftProvider(config);
+    config.provider === 'mock'
+      ? new ExtractiveMockProvider()
+      : config.provider === 'gemini'
+        ? new GeminiDraftProvider(access, config, budget)
+        : new OllamaDraftProvider(config);
   const limiter = new ProviderLimiter(
     producer,
     `${env.INGESTION_QUEUE_PREFIX}:draft:${delegate.name}:${delegate.model}`,
@@ -52,7 +61,7 @@ export function createDraftRuntime(
     name: delegate.name,
     model: delegate.model,
     generate: async (input, signal) => {
-      await limiter.acquire(signal);
+      if (delegate.name !== 'gemini') await limiter.acquire(signal);
       return delegate.generate(input, signal);
     },
   };
@@ -71,6 +80,7 @@ export function createDraftRuntime(
     pipeline,
     signal: controller.signal,
     timeoutMs: config.timeoutMs + 1000,
+    maxAttempts: config.provider === 'gemini' ? 2 : 4,
   });
   const worker = new Worker(
     DRAFT_QUEUE,
@@ -98,6 +108,33 @@ export function createDraftRuntime(
     if (stopped || pending) return;
     pending = (async () => {
       await queue.setGlobalConcurrency(env.WORKER_CONCURRENCY);
+      const status =
+        config.provider === 'gemini'
+          ? await budget.status()
+          : {
+              mode: config.provider === 'mock' ? 'synthetic' : 'unavailable',
+              provider: config.provider,
+              model: config.model,
+              embeddingModel: 'resolvehub-synthetic-sha256-v1',
+              canGenerate: true,
+              freeTierVerified: false,
+              reasonCode: null,
+              message:
+                config.provider === 'mock'
+                  ? 'Synthetic offline provider. No cloud AI requests or API charges.'
+                  : 'Local Ollama is configured; cloud provider status is unavailable.',
+              retryAfterSeconds: null,
+              lastSuccessfulAt: null,
+            };
+      await producer.set(
+        `${env.INGESTION_QUEUE_PREFIX}:ai:status`,
+        JSON.stringify({
+          status,
+          syntheticOrganizations: config.provider === 'gemini' ? access.organizations : [],
+        }),
+        'EX',
+        5,
+      );
       const jobs = await pool.query<{ job_id: string; organization_id: string }>(
         'SELECT * FROM drafting_dispatch_candidates()',
       );

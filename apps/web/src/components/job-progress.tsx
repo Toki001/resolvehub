@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import Link from 'next/link';
+import { aiFailureMessage } from '@resolvehub/contracts';
 const jobSchema = z.object({
   status: z.enum(['accepted', 'processing', 'succeeded', 'failed', 'cancelled']),
   attempts: z.number(),
@@ -66,7 +67,13 @@ export function JobProgress({
     <div className="job-progress" aria-live="polite">
       <strong>Background job: {state.status}</strong>
       <span>Attempt {state.attempts} of 4</span>
-      {state.reasonCode && <p>{state.reasonCode}</p>}
+      {state.reasonCode && (
+        <p>
+          {state.reasonCode.startsWith('GEMINI_')
+            ? aiFailureMessage(state.reasonCode)
+            : state.reasonCode}
+        </p>
+      )}
       {state.status === 'succeeded' && kind === 'draft_response' && state.resourceId && (
         <Link className="text-link" href={`/review/${state.resourceId}`}>
           Review draft →

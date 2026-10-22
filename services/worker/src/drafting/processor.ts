@@ -18,6 +18,7 @@ export function draftProcessor(dependencies: {
   signal?: AbortSignal;
   retryBaseMs?: number;
   timeoutMs?: number;
+  maxAttempts?: number;
 }) {
   return async (input: unknown) => {
     const envelope = ingestionJobSchema.safeParse(input);
@@ -79,7 +80,12 @@ export function draftProcessor(dependencies: {
           Math.random,
           failure.retryAfterMs,
         );
-      const terminal = await session.fail(failure.category, failure.permanent, delay);
+      const terminal = await session.fail(
+        failure.category,
+        failure.permanent || session.attemptNumber >= (dependencies.maxAttempts ?? 4),
+        delay,
+        failure.replayEligible,
+      );
       count(terminal ? 'queue_dead_letter_events' : 'queue_retries', 1, {
         job_kind: 'draft_response',
       });

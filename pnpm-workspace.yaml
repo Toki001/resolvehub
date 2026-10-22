@@ -4,6 +4,7 @@ packages:
   - packages/*
 
 allowBuilds:
+  '@google/genai': false
   '@apollo/protobufjs': false
   '@parcel/watcher': true
   '@nestjs/core': false

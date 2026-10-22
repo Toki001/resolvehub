@@ -14,8 +14,9 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "zod": "^4.1.12",
-    "@resolvehub/telemetry": "workspace:*"
+    "@google/genai": "2.30.0",
+    "@resolvehub/telemetry": "workspace:*",
+    "zod": "^4.1.12"
   },
   "files": [
     "dist"

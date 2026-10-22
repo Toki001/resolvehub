@@ -9,6 +9,7 @@ import type { ApiEnv } from './env.js';
 import { HealthController } from './health.controller.js';
 import { HealthService } from './health.service.js';
 import { DatabaseService } from './application/database.service.js';
+import { AiStatusService } from './application/ai-status.service.js';
 import { ContractValidator } from './application/validator.js';
 import { UploadsService } from './application/uploads.service.js';
 import { REPLY_DELIVERY, InternalReplyDelivery } from './delivery/reply-delivery.js';
@@ -45,6 +46,7 @@ import type { GraphqlContext } from './auth/context.js';
     { provide: 'TELEMETRY_LIFECYCLE', useValue: { onApplicationShutdown: shutdownTelemetry } },
     { provide: API_ENV, useFactory: () => parseApiEnv(process.env) },
     DatabaseService,
+    AiStatusService,
     ContractValidator,
     AuthService,
     AuthGuard,

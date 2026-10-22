@@ -105,7 +105,12 @@ export class DraftingPipeline {
           outputUsdPerMillion: this.config.outputUsdPerMillion,
           embeddingUsdPerMillion: 0,
           effectiveDate: this.config.priceDate,
-          source: this.provider.name === 'mock' ? 'mock' : 'operator_configured',
+          source:
+            this.provider.name === 'mock'
+              ? 'mock'
+              : this.provider.name === 'gemini'
+                ? 'google_free_tier_verified'
+                : 'operator_configured',
         },
         retrievalLatencyMs,
         generationLatencyMs,
@@ -189,7 +194,13 @@ export class DraftingPipeline {
         () =>
           guarded(() =>
             this.provider.generate(
-              { prompt, question, evidence: context, maxOutputTokens: this.config.maxOutputTokens },
+              {
+                organizationId: input.organizationId,
+                prompt,
+                question,
+                evidence: context,
+                maxOutputTokens: this.config.maxOutputTokens,
+              },
               controller.signal,
             ),
           ),

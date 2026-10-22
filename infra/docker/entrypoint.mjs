@@ -6,6 +6,7 @@ const secretFields = [
   'WORKER_DATABASE_URL',
   'REDIS_URL',
   'API_SECRET_KEY',
+  'GEMINI_API_KEY',
   'S3_ACCESS_KEY_ID',
   'S3_SECRET_ACCESS_KEY',
 ];

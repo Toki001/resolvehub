@@ -12,3 +12,5 @@ export * from './drafting/config.js';
 export * from './drafting/evidence.js';
 export * from './drafting/provider.js';
 export * from './drafting/pipeline.js';
+export * from './gemini/config.js';
+export * from './gemini/provider.js';

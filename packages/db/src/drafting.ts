@@ -204,7 +204,7 @@ export class DraftSession {
       return true;
     });
   }
-  async fail(category: string, permanent: boolean, delayMs: number) {
+  async fail(category: string, permanent: boolean, delayMs: number, replayEligible = !permanent) {
     const terminal = permanent || this.attemptNumber >= 4;
     await this.transaction(async () => {
       await this.client.query(
@@ -232,7 +232,7 @@ export class DraftSession {
             `Draft processing failed: ${category}.`,
             createHash('sha256').update(JSON.stringify(this.job.payload)).digest('hex'),
             this.job.requestId,
-            !permanent,
+            replayEligible,
           ],
         );
     });

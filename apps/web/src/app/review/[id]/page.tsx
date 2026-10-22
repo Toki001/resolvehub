@@ -184,6 +184,13 @@ export default async function ReviewDraft({ params }: { params: Promise<{ id: st
             </section>
             <section className="content-card">
               <h2>Generation details</h2>
+              {draft.generation?.provider === 'gemini' && (
+                <p className="review-warning">
+                  Gemini Free Tier · verified synthetic use. Google may use inputs and outputs to
+                  improve its products. This draft still requires human review; replies remain
+                  internal only.
+                </p>
+              )}
               {draft.generation?.provider === 'mock' && (
                 <p className="review-warning">
                   Local mock provider. These are deterministic source extracts, not a live model

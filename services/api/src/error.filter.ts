@@ -68,7 +68,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
         request.path.startsWith('/v1/webhooks/') ? 'HMAC realm="ResolveHub webhooks"' : 'Bearer',
       );
     }
-    if (status === 429) response.setHeader('Retry-After', '30');
+    if (status === 429 || (status === 503 && details?.retryAfterSeconds)) {
+      const hint = z.number().int().min(1).max(604800).safeParse(details?.retryAfterSeconds);
+      response.setHeader('Retry-After', String(hint.success ? hint.data : 30));
+    }
     response.status(status).json(body);
   }
 }

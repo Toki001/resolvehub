@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+    "/v1/ai/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authenticated provider configuration and recent availability without cloud probes */
+        get: operations["getAiProviderStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health/live": {
         parameters: {
             query?: never;
@@ -295,9 +312,24 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        AiProviderStatus: {
+            /** @enum {string} */
+            mode: "synthetic" | "gemini_live" | "unavailable";
+            /** @enum {string} */
+            provider: "mock" | "ollama" | "gemini";
+            model: string;
+            embeddingModel: string;
+            canGenerate: boolean;
+            freeTierVerified: boolean;
+            reasonCode: string | null;
+            message: string;
+            retryAfterSeconds: number | null;
+            /** Format: date-time */
+            lastSuccessfulAt: string | null;
+        };
         Error: {
             /** @enum {string} */
-            code: "INVALID_INPUT" | "INVALID_CURSOR" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "INVALID_CONTENT" | "PAYLOAD_TOO_LARGE" | "CAPACITY_EXCEEDED" | "DEPENDENCY_UNAVAILABLE" | "INTERNAL_ERROR";
+            code: "INVALID_INPUT" | "INVALID_CURSOR" | "UNAUTHENTICATED" | "FORBIDDEN" | "NOT_FOUND" | "CONFLICT" | "INVALID_CONTENT" | "PAYLOAD_TOO_LARGE" | "CAPACITY_EXCEEDED" | "DEPENDENCY_UNAVAILABLE" | "INTERNAL_ERROR" | "GEMINI_NOT_CONFIGURED" | "GEMINI_FREE_TIER_UNVERIFIED" | "GEMINI_SYNTHETIC_SCOPE_REQUIRED" | "GEMINI_QUOTA_EXHAUSTED" | "GEMINI_MINUTE_LIMIT" | "GEMINI_DAILY_LIMIT" | "GEMINI_BUSY" | "GEMINI_TIMEOUT" | "GEMINI_UNAVAILABLE" | "GEMINI_MODEL_UNAVAILABLE" | "GEMINI_INVALID_RESPONSE";
             message: string;
             /** Format: uuid */
             requestId: string;
@@ -440,7 +472,7 @@ export interface components {
             outcome: "answer" | "insufficient_evidence";
             abstentionReason: string | null;
             /** @enum {string} */
-            provider: "mock" | "ollama";
+            provider: "mock" | "ollama" | "gemini";
             model: string;
             embeddingModel: string;
             promptVersion: string;
@@ -457,7 +489,7 @@ export interface components {
                 /** Format: date */
                 effectiveDate: string;
                 /** @enum {string} */
-                source: "mock" | "operator_configured";
+                source: "mock" | "operator_configured" | "google_free_tier_verified";
             };
             retrievalLatencyMs: number;
             generationLatencyMs: number;
@@ -564,6 +596,29 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getAiProviderStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Safe AI status for this verified workspace */
+            200: {
+                headers: {
+                    "X-Request-ID"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiProviderStatus"];
+                };
+            };
+            401: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+        };
+    };
     getLiveness: {
         parameters: {
             query?: never;

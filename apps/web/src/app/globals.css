@@ -1,5 +1,27 @@
 @import 'tailwindcss';
 
+.ai-provider-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted, #687564);
+  white-space: nowrap;
+}
+.ai-provider-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #a77d43;
+  flex: 0 0 auto;
+}
+.ai-provider-dot.synthetic {
+  background: #83947b;
+}
+.ai-provider-dot.gemini_live {
+  background: #355e4e;
+}
+
 @theme {
   --font-sans: 'Inter', 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   --color-forest: #315b4a;

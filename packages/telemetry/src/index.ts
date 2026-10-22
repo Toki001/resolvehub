@@ -38,8 +38,13 @@ const allowedValues: Record<string, readonly string[]> = {
   job_kind: ['document_ingestion', 'draft_response'],
   outcome: ['success', 'error', 'answer', 'insufficient_evidence'],
   stage: ['download', 'extract', 'chunk', 'embed', 'publish'],
-  provider: ['mock', 'ollama'],
-  model: ['resolvehub-extractive-mock-v1', 'resolvehub-synthetic-sha256-v1', 'operator-configured'],
+  provider: ['mock', 'ollama', 'gemini'],
+  model: [
+    'resolvehub-extractive-mock-v1',
+    'resolvehub-synthetic-sha256-v1',
+    'operator-configured',
+    'gemini-2.5-flash-lite',
+  ],
   token_type: ['input', 'output', 'embedding'],
   method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'OTHER'],
   status_class: ['1xx', '2xx', '3xx', '4xx', '5xx'],
@@ -97,6 +102,7 @@ const routes = [
   '/health/ready',
   '/graphql',
   '/v1/me',
+  '/v1/ai/status',
   '/v1/documents/uploads',
   '/v1/drafts/:id/edits',
   '/v1/tickets/:id/status',
@@ -173,6 +179,8 @@ const counterNames = [
   'model_tokens',
   'model_cost_usd',
   'model_usage_incomplete',
+  'provider_requests',
+  'provider_quota_exhausted',
   'telemetry_export_failures',
 ] as const;
 const histogramNames = [
@@ -185,6 +193,7 @@ const histogramNames = [
   'generation_duration_seconds',
   'draft_cost_usd',
   'draft_duration_seconds',
+  'provider_request_duration_seconds',
 ] as const;
 const gaugeNames = [
   'queue_pending',

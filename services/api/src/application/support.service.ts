@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { UploadsService } from './uploads.service.js';
+import { AiStatusService } from './ai-status.service.js';
 import { REPLY_DELIVERY } from '../delivery/reply-delivery.js';
 import type { ReplyDelivery } from '../delivery/reply-delivery.js';
 import { Inject, Injectable } from '@nestjs/common';
@@ -56,6 +57,7 @@ export class SupportService {
     @Inject(Pagination) private readonly pagination: Pagination,
     @Inject(UploadsService) private readonly uploads: UploadsService,
     @Inject(REPLY_DELIVERY) private readonly delivery: ReplyDelivery,
+    @Inject(AiStatusService) private readonly ai: AiStatusService,
   ) {}
 
   private async execute<T>(operation: () => Promise<T>): Promise<T> {
@@ -169,6 +171,7 @@ export class SupportService {
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, `POST /v1/tickets/${id}/drafts`, {}, async (repository) => {
       if (!(await repository.ticket(id))) throw notFound();
+      await this.ai.requireAvailable(identity.organizationId);
       const jobId = await repository.createJob(
         'draft_response',
         id,
@@ -413,6 +416,10 @@ export class SupportService {
     requireWriteAccess(identity, true);
     const actor = this.actor(identity, requestId);
     return this.mutate(actor, key, `POST /v1/jobs/${id}/replay`, {}, async (repository) => {
+      const record = await repository.job(id);
+      if (!record) throw notFound();
+      if (this.validator.validate('Job', record, true).kind === 'draft_response')
+        await this.ai.requireAvailable(identity.organizationId);
       const jobId = await repository.replay(id, requestId, identity.membershipId);
       await repository.audit(actor, 'job.replayed', jobId);
       return this.accepted(jobId, requestId);

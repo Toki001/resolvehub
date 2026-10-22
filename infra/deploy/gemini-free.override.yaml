@@ -1,0 +1,28 @@
+# Explicit opt-in only. No account/billing setup; requires verified Free Tier.
+services:
+  api:
+    environment:
+      DRAFT_PROVIDER: gemini
+  worker:
+    environment:
+      DRAFT_PROVIDER: gemini
+      DRAFT_MODEL: gemini-2.5-flash-lite
+      GEMINI_API_KEY_FILE: /run/secrets/gemini_api_key
+      GEMINI_PROJECT_ID: ${GEMINI_PROJECT_ID:?Verified project required}
+      GEMINI_FREE_TIER_VERIFIED_AT: ${GEMINI_FREE_TIER_VERIFIED_AT:?Current verification required}
+      GEMINI_FREE_TIER_KEY_SHA256: ${GEMINI_FREE_TIER_KEY_SHA256:?Verified key digest required}
+      GEMINI_FREE_TIER_CONFIRMED: ${GEMINI_FREE_TIER_CONFIRMED:-false}
+      GEMINI_BILLING_DISABLED: ${GEMINI_BILLING_DISABLED:-false}
+      GEMINI_SYNTHETIC_ONLY: ${GEMINI_SYNTHETIC_ONLY:-false}
+      GEMINI_SYNTHETIC_ORGANIZATION_IDS: ${GEMINI_SYNTHETIC_ORGANIZATION_IDS:?Synthetic scope required}
+      GEMINI_REQUESTS_PER_MINUTE: ${GEMINI_REQUESTS_PER_MINUTE:-2}
+      GEMINI_REQUESTS_PER_DAY: ${GEMINI_REQUESTS_PER_DAY:-10}
+      GEMINI_CONCURRENCY: ${GEMINI_CONCURRENCY:-1}
+      DRAFT_MAX_PROMPT_TOKENS: '4096'
+      DRAFT_MAX_OUTPUT_TOKENS: '512'
+      DRAFT_INPUT_USD_PER_MILLION: '0'
+      DRAFT_OUTPUT_USD_PER_MILLION: '0'
+    secrets: [gemini_api_key]
+secrets:
+  gemini_api_key:
+    file: ${RESOLVEHUB_SECRETS_DIR:?External secret directory required}/gemini_api_key

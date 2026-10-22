@@ -1,7 +1,7 @@
 import { beginHttp } from '@resolvehub/telemetry';
 import { createQueueObserver } from './telemetry.js';
 import { shutdownTelemetry } from '@resolvehub/telemetry/bootstrap';
-import { parseDraftConfig } from '@resolvehub/ai';
+import { parseDraftConfig, parseGeminiConfig } from '@resolvehub/ai';
 import { createDraftRuntime } from './drafting/runtime.js';
 import { createServer } from 'node:http';
 import { Worker } from 'bullmq';
@@ -34,7 +34,12 @@ async function bootstrap(): Promise<void> {
       import.meta.url,
     ),
   );
-  const drafting = createDraftRuntime(env, database.pool, draftConfig);
+  const drafting = createDraftRuntime(
+    env,
+    database.pool,
+    draftConfig,
+    parseGeminiConfig(draftConfig.provider === 'gemini' ? process.env : {}),
+  );
   const connection = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: null,
     connectTimeout: 2_000,
@@ -156,7 +161,8 @@ bootstrap().catch((error: unknown) => {
   console.error(
     error instanceof Error &&
       (error.message.startsWith('Invalid worker environment:') ||
-        error.message.startsWith('Invalid draft configuration:'))
+        error.message.startsWith('Invalid draft configuration:') ||
+        error.message.startsWith('Invalid Gemini configuration:'))
       ? error.message
       : 'Worker startup failed. Check configuration and port availability.',
   );

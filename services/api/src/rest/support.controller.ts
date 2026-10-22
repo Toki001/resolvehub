@@ -18,6 +18,7 @@ import { identityOf } from '../auth/context.js';
 import type { ApiRequest } from '../auth/context.js';
 import { ContractValidator } from '../application/validator.js';
 import { SupportService } from '../application/support.service.js';
+import { AiStatusService } from '../application/ai-status.service.js';
 
 function send(response: Response, receipt: MutationReceipt) {
   response.status(receipt.status);
@@ -31,10 +32,22 @@ export class SupportController {
   constructor(
     @Inject(SupportService) private readonly support: SupportService,
     @Inject(ContractValidator) private readonly validator: ContractValidator,
+    @Inject(AiStatusService) private readonly ai: AiStatusService,
   ) {}
 
   @Get('me') me(@Req() request: ApiRequest) {
     return identityOf(request);
+  }
+  @Get('ai/status') async aiStatus(
+    @Req() request: ApiRequest,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    response.setHeader('Cache-Control', 'no-store');
+    return this.validator.validate(
+      'AiProviderStatus',
+      await this.ai.status(identityOf(request).organizationId),
+      true,
+    );
   }
 
   @Post('documents/uploads')

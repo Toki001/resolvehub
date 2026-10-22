@@ -1,0 +1,91 @@
+{
+  "date": "2026-10-21",
+  "verification": {
+    "jestTests": 327,
+    "jestSuites": 35,
+    "branchCoveragePercent": 92.49,
+    "browserChecks": 14
+  },
+  "offline": {
+    "fixtureDigest": "01a5a9b8ed414977187300b8ac56fcc62a5c7a87ecb2761ca44b5d4a1bc74eb5",
+    "provider": "mock",
+    "model": "resolvehub-extractive-mock-v1",
+    "embeddingModel": "resolvehub-synthetic-sha256-v1",
+    "cases": 60,
+    "metrics": {
+      "recallAt5": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "supportedClaims": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "correctAbstention": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "tenantLeakage": {
+        "numerator": 0,
+        "denominator": 60,
+        "value": 0,
+        "wilson95": {
+          "lower": 0,
+          "upper": 0.06017393047793289
+        }
+      },
+      "answered": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "failures": []
+    },
+    "latency": {
+      "requests": 60,
+      "p95Ms": 32.39420800000153,
+      "maxMs": 34.85783299999821,
+      "includes": "query embedding, PostgreSQL retrieval, context, mock generation, citation validation; excludes BullMQ queue delay"
+    },
+    "cost": {
+      "maxEstimatedUsd": 0,
+      "totalEstimatedUsd": 0
+    },
+    "tokenEstimates": {
+      "source": "mock_estimate",
+      "input": 6500,
+      "output": 1699,
+      "embedding": 542
+    }
+  },
+  "live": {
+    "generationAttemptsAcrossBothRuns": 2,
+    "completedDrafts": 0,
+    "diagnosticHttpStatus": 404,
+    "diagnosticErrorStatus": "NOT_FOUND",
+    "qualityMetrics": null,
+    "reportedInputTokens": null,
+    "reportedOutputTokens": null,
+    "generationLatencyMs": null,
+    "reason": "Requested model returned NOT_FOUND; no substitute or further live inference attempted."
+  }
+}

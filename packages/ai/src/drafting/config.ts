@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const draftConfigSchema = z.object({
-  provider: z.enum(['mock', 'ollama']).default('mock'),
+  provider: z.enum(['mock', 'ollama', 'gemini']).default('mock'),
   model: z.string().min(1).max(200).default('resolvehub-extractive-mock-v1'),
   baseUrl: z
     .url()
@@ -63,6 +63,15 @@ export function parseDraftConfig(env: NodeJS.ProcessEnv): DraftConfig {
       throw new Error('Ollama model must be explicit');
     if (config.provider === 'mock' && config.model !== 'resolvehub-extractive-mock-v1')
       throw new Error('Mock model mismatch');
+    if (
+      config.provider === 'gemini' &&
+      (config.model !== 'gemini-2.5-flash-lite' ||
+        config.inputUsdPerMillion !== 0 ||
+        config.outputUsdPerMillion !== 0 ||
+        config.maxPromptTokens > 4096 ||
+        config.maxOutputTokens > 512)
+    )
+      throw new Error('Gemini permits only the verified free text model and conservative bounds');
     return config;
   } catch {
     throw new Error(

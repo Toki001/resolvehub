@@ -1,10 +1,11 @@
-import { EmbeddingProviderError } from '@resolvehub/ai';
+import { EmbeddingProviderError, GeminiFailure } from '@resolvehub/ai';
 
 export class IngestionFailure extends Error {
   constructor(
     readonly category: string,
     readonly permanent = false,
     readonly retryAfterMs = 0,
+    readonly replayEligible = !permanent,
   ) {
     super(category);
   }
@@ -22,6 +23,8 @@ export function retryDelay(attempt: number, base = 1000, random = Math.random, r
 }
 export function classify(error: unknown): IngestionFailure {
   if (error instanceof IngestionFailure) return error;
+  if (error instanceof GeminiFailure)
+    return new IngestionFailure(error.category, !error.transient, error.retryAfterMs, true);
   if (error instanceof EmbeddingProviderError) {
     if (error.status === 429)
       return new IngestionFailure('PROVIDER_RATE_LIMITED', false, error.retryAfterMs);

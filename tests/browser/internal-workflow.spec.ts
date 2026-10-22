@@ -44,6 +44,9 @@ test('upload → cited draft → edit → approve → internal conversation; rej
   test.setTimeout(90000);
   if (!fixtures) throw new Error('Missing isolated fixtures');
   await login(page, fixtures.credentials.adminA);
+  await expect(
+    page.getByRole('link', { name: 'AI provider: Synthetic', exact: true }),
+  ).toBeVisible();
   const session = (await page.context().cookies()).find((c) => c.name === 'rh_session');
   expect(session?.httpOnly).toBe(true);
   expect(session?.sameSite).toBe('Strict');

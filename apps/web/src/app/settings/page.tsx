@@ -6,6 +6,7 @@ import { PageHeading, workspaceAccess, WorkspaceIssue } from '@/components/works
 import { ActionForm } from '@/components/action-form';
 import { signOut } from '@/lib/actions';
 import { BackgroundJobs } from '@/components/background-jobs';
+import { AiProviderStatus } from '@/components/ai-provider-status';
 export const metadata = { title: 'Settings' };
 export default async function Settings({
   searchParams,
@@ -47,6 +48,7 @@ export default async function Settings({
         )}
       </section>
       <HealthPanel />
+      <AiProviderStatus details />
       {access.kind === 'connected' && (
         <BackgroundJobs
           admin={access.identity.role === 'admin'}

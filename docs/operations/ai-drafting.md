@@ -1,6 +1,6 @@
 # AI-assisted support drafting
 
-Apply `pnpm db:migrate`, then apply the API and worker grants as the migration administrator using the separate logins described in [database operations](database.md). Restart the API and worker after migrations/shared package changes. Default drafting uses the deterministic extractive mock and makes no model network calls. The dashboard remains a shell; use authenticated contract clients for these commands.
+Apply `pnpm db:migrate`, then apply the API and worker grants as the migration administrator using the separate logins described in [database operations](database.md). Restart the API and worker after migrations/shared package changes. Default drafting uses the deterministic extractive mock and makes no model network calls. The authenticated dashboard supports these workflows; generated contract clients remain available. For opt-in Gemini Free Tier configuration, privacy, quotas and measured availability, see [Gemini operations](gemini-free-tier.md).
 
 Stage and index approved source documents through the [ingestion flow](ingestion-recovery.md). `POST /v1/tickets/{id}/drafts` with `{}`, a verified bearer token and `Idempotency-Key` returns 202 and a durable job URL. Poll `GET /v1/jobs/{id}`. On success, `resourceId` identifies the persisted draft; query `draft(id)` with the generated `DraftResponseDocument`. No tenant input is accepted as authorization.
 

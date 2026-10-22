@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { parseEmbeddingConfiguration } from '@resolvehub/db';
 
 const schema = z.object({
+  DRAFT_PROVIDER: z.enum(['mock', 'ollama', 'gemini']).default('mock'),
+  INGESTION_QUEUE_PREFIX: z
+    .string()
+    .regex(/^[a-z0-9_-]{1,60}$/)
+    .default('resolvehub'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   API_HOST: z.string().min(1).default('127.0.0.1'),
   API_PORT: z.coerce.number().int().min(1).max(65535).default(3001),

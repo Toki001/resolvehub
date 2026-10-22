@@ -12,7 +12,7 @@ import {
   draftConfigSchema,
 } from '../src/index.js';
 import type { RagDraft } from '../src/index.js';
-import { corpusSchema, goldenSchema, evalId } from './fixtures.js';
+import { corpusSchema, goldenSchema } from './fixtures.js';
 import type { GoldenCase, CorpusRow } from './fixtures.js';
 
 export async function readEvaluationFixtures() {
@@ -34,9 +34,11 @@ export async function loadEvaluationCorpus(
   pool: ReturnType<typeof createDatabase>['pool'],
   corpus: readonly CorpusRow[],
 ) {
-  for (const tenant of [0, 1])
+  for (const [tenant, organizationId] of [
+    ...new Set(corpus.map((row) => row.organizationId)),
+  ].entries())
     await pool.query('INSERT INTO organizations(id,name) VALUES($1,$2)', [
-      evalId(`org:${tenant}`),
+      organizationId,
       `Synthetic RAG evaluation ${tenant}`,
     ]);
   for (const documentId of new Set(corpus.map((row) => row.documentId))) {
