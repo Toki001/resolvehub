@@ -7,6 +7,7 @@ export function geminiAccess(organizationId = geminiOrganization) {
   return parseGeminiConfig({
     GEMINI_API_KEY: geminiTestKey,
     GEMINI_PROJECT_ID: 'synthetic-free-project',
+    GEMINI_FREE_TIER_MODEL: 'gemini-3.5-flash-lite',
     GEMINI_FREE_TIER_KEY_SHA256: createHash('sha256').update(geminiTestKey).digest('hex'),
     GEMINI_FREE_TIER_VERIFIED_AT: new Date().toISOString(),
     GEMINI_BILLING_DISABLED: 'true',
@@ -16,13 +17,13 @@ export function geminiAccess(organizationId = geminiOrganization) {
   });
 }
 export const geminiDraftConfig = () =>
-  draftConfigSchema.parse({ provider: 'gemini', model: 'gemini-2.5-flash-lite' });
+  draftConfigSchema.parse({ provider: 'gemini', model: 'gemini-3.5-flash-lite' });
 export function geminiResponse(output: unknown, finishReason = 'STOP') {
   return Response.json({
     candidates: [
       { content: { role: 'model', parts: [{ text: JSON.stringify(output) }] }, finishReason },
     ],
     usageMetadata: { promptTokenCount: 120, candidatesTokenCount: 30, totalTokenCount: 150 },
-    modelVersion: 'gemini-2.5-flash-lite',
+    modelVersion: 'gemini-3.5-flash-lite',
   });
 }

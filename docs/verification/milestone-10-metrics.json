@@ -1,0 +1,122 @@
+{
+  "date": "2026-10-22",
+  "baseline": "8c0d226",
+  "verification": {
+    "jestTests": 341,
+    "jestSuites": 36,
+    "branchCoveragePercent": 92.56,
+    "browserChecks": 14,
+    "dockerBuildTargets": ["web", "api", "worker"],
+    "dockerRuntimeSmoke": "passed"
+  },
+  "discovery": {
+    "apiVersion": "v1beta",
+    "sdk": "@google/genai 2.30.0",
+    "metadataRequests": 1,
+    "totalListed": 63,
+    "modelNames": [
+      "models/gemini-2.5-flash-lite",
+      "models/gemini-3.5-flash-lite",
+      "models/gemini-3.1-flash-lite"
+    ],
+    "generationMethod": "generateContent",
+    "manualAccountVerification": "current key-bound Free Tier/billing-disabled assertion, timestamp preserved",
+    "billingAuditAutomated": false
+  },
+  "live": {
+    "model": "gemini-3.5-flash-lite",
+    "generationAttemptsThisMilestone": 8,
+    "successfulMinimalTextRequests": 1,
+    "minimalText": {
+      "httpStatus": 200,
+      "latencyMs": 1281.9621670000001,
+      "inputTokens": 5,
+      "outputTokens": 2,
+      "thinkingTokens": 0,
+      "estimatedFreeApiCostUsd": 0
+    },
+    "completedRagDrafts": 0,
+    "lastSyntheticJob": {
+      "status": "failed",
+      "attempts": 1,
+      "reasonCode": "GEMINI_UNAVAILABLE"
+    },
+    "projectRequestsInRollingWindow": 10,
+    "configuredDailyLimit": 10,
+    "priorMilestoneRequests": 2,
+    "citationAccuracy": null,
+    "correctAbstention": null,
+    "ragInputTokens": null,
+    "ragOutputTokens": null,
+    "ragGenerationLatencyMs": null,
+    "editedApprovedLiveReply": false,
+    "failedRequestUsage": "unknown",
+    "infrastructureCosts": "not measured",
+    "remainingBlocker": "Integrated worker generation failed; daily application budget reached. No further cloud calls or paid fallback."
+  },
+  "offline": {
+    "provider": "mock",
+    "model": "resolvehub-extractive-mock-v1",
+    "fixtureDigest": "01a5a9b8ed414977187300b8ac56fcc62a5c7a87ecb2761ca44b5d4a1bc74eb5",
+    "cases": 60,
+    "metrics": {
+      "recallAt5": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "supportedClaims": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "correctAbstention": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "tenantLeakage": {
+        "numerator": 0,
+        "denominator": 60,
+        "value": 0,
+        "wilson95": {
+          "lower": 0,
+          "upper": 0.06017393047793289
+        }
+      },
+      "answered": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "failures": []
+    },
+    "latency": {
+      "requests": 60,
+      "p95Ms": 27.932749999999942,
+      "maxMs": 30.406708999998955,
+      "includes": "query embedding, PostgreSQL retrieval, context, mock generation, citation validation; excludes BullMQ queue delay"
+    },
+    "cost": {
+      "maxEstimatedUsd": 0,
+      "totalEstimatedUsd": 0
+    },
+    "concurrency": 10
+  }
+}

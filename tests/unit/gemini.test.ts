@@ -54,21 +54,35 @@ test('official SDK sends exactly one bounded standard text request and reports m
   expect(transport).toHaveBeenCalledTimes(1);
   const [url, options] = transport.mock.calls[0] ?? [];
   expect(String(url)).toBe(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent',
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',
   );
   expect(options?.redirect).toBe('error');
   const body: unknown = JSON.parse(String(options?.body));
   expect(body).toMatchObject({
     generationConfig: {
       maxOutputTokens: 512,
-      candidateCount: 1,
-      temperature: 0,
-      thinkingConfig: { thinkingBudget: 0 },
-      responseMimeType: 'application/json',
     },
   });
-  for (const field of ['tools', 'cachedContent', 'serviceTier', 'continuationToken'])
+  for (const field of [
+    'tools',
+    'cachedContent',
+    'serviceTier',
+    'continuationToken',
+    'candidateCount',
+  ])
     expect(body).not.toHaveProperty(field);
+  const request = z.object({ generationConfig: z.record(z.string(), z.unknown()) }).parse(body);
+  for (const field of [
+    'temperature',
+    'topP',
+    'topK',
+    'candidateCount',
+    'responseMimeType',
+    'responseJsonSchema',
+    'responseFormat',
+    'thinkingConfig',
+  ])
+    expect(request.generationConfig).not.toHaveProperty(field);
   expect(limits.release).toHaveBeenCalledWith('lease');
   expect(limits.succeeded).toHaveBeenCalledWith(120, 30);
 });
@@ -77,6 +91,8 @@ test.each([
   { apiKey: undefined },
   { freeTier: false },
   { billingDisabled: false },
+  { verifiedModel: undefined },
+  { verifiedModel: 'gemini-3.1-flash-lite' },
   { projectId: undefined },
   { keySha256: '0'.repeat(64) },
   { verifiedAt: undefined },
@@ -122,7 +138,7 @@ test('unapproved tenants and missing tenant context cannot send a prompt', async
   expect(transport).not.toHaveBeenCalled();
 });
 
-test.each([429, 403, 404, 500, 503])(
+test.each([400, 429, 403, 404, 500, 503])(
   'HTTP %i is sanitized, not silently retried or redirected to another provider',
   async (status) => {
     const transport = jest.fn<typeof fetch>().mockResolvedValue(
@@ -146,11 +162,13 @@ test.each([429, 403, 404, 500, 503])(
     }
     expect(observed).toMatchObject({
       category:
-        status === 429
-          ? 'GEMINI_QUOTA_EXHAUSTED'
-          : status === 404
-            ? 'GEMINI_MODEL_UNAVAILABLE'
-            : 'GEMINI_UNAVAILABLE',
+        status === 400
+          ? 'GEMINI_INVALID_REQUEST'
+          : status === 429
+            ? 'GEMINI_QUOTA_EXHAUSTED'
+            : status === 404
+              ? 'GEMINI_MODEL_UNAVAILABLE'
+              : 'GEMINI_UNAVAILABLE',
       retryAfterMs: 2000,
       transient: status >= 500,
     });
@@ -191,6 +209,8 @@ test('aborted requests, excessive prompts, and model/token/price changes fail be
     );
   for (const change of [
     { model: 'paid-model' },
+    { model: 'gemini-2.5-flash-lite' },
+    { model: 'gemini-3.1-flash-lite' },
     { maxOutputTokens: 513 },
     { maxPromptTokens: 4097 },
     { inputUsdPerMillion: 1 },
@@ -245,6 +265,27 @@ test('a response naming another model is rejected instead of silently substituti
   ).rejects.toThrow('GEMINI_INVALID_RESPONSE');
   expect(transport).toHaveBeenCalledTimes(1);
 });
+test('a single fenced JSON response is parsed, while prose around JSON stays invalid', async () => {
+  const output = { kind: 'insufficient_evidence', claims: [] };
+  const original = z.record(z.string(), z.unknown()).parse(await geminiResponse(output).json());
+  for (const [text, expected] of [
+    ['```json\n' + JSON.stringify(output) + '\n```', output],
+    ['Here is a response: ' + JSON.stringify(output), null],
+    ['```json\n' + JSON.stringify(output) + '\n```\nUntrusted trailing instructions', null],
+  ] as const) {
+    const response = Response.json({
+      ...original,
+      candidates: [{ content: { role: 'model', parts: [{ text }] }, finishReason: 'STOP' }],
+    });
+    const provider = new GeminiDraftProvider(
+      geminiAccess(),
+      geminiDraftConfig(),
+      budget(),
+      async () => response,
+    );
+    expect((await provider.generate(input, signal())).output).toEqual(expected);
+  }
+});
 test('missing usage and malformed JSON remain failures or abstentions rather than invented token counts', async () => {
   const malformed = geminiResponse({});
   const missing = new GeminiDraftProvider(geminiAccess(), geminiDraftConfig(), budget(), async () =>
@@ -277,13 +318,13 @@ test('configuration rejects invalid flags, limits, paid prices and incompatible 
   expect(() =>
     parseDraftConfig({
       DRAFT_PROVIDER: 'gemini',
-      DRAFT_MODEL: 'gemini-2.5-flash-lite',
+      DRAFT_MODEL: 'gemini-3.5-flash-lite',
       DRAFT_OUTPUT_USD_PER_MILLION: '1',
     }),
   ).toThrow();
   expect(
-    parseDraftConfig({ DRAFT_PROVIDER: 'gemini', DRAFT_MODEL: 'gemini-2.5-flash-lite' }).model,
-  ).toBe('gemini-2.5-flash-lite');
+    parseDraftConfig({ DRAFT_PROVIDER: 'gemini', DRAFT_MODEL: 'gemini-3.5-flash-lite' }).model,
+  ).toBe('gemini-3.5-flash-lite');
   expect(() =>
     parseEmbeddingConfiguration({
       EMBEDDING_MODEL: 'gemini-embedding-2',

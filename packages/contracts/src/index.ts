@@ -49,6 +49,10 @@ export const aiStatusEnvelopeSchema = z.object({
   syntheticOrganizations: z.array(z.uuid()).max(10),
 });
 const aiMessages: Record<string, string> = {
+  GEMINI_INVALID_REQUEST:
+    'Gemini rejected the configured request. Live drafting is paused until the configuration is corrected.',
+  GEMINI_MODEL_UNVERIFIED:
+    'Gemini is paused until the selected model has been explicitly verified for free-tier use.',
   GEMINI_NOT_CONFIGURED: 'Gemini is unavailable. Add its key to the private backend environment.',
   GEMINI_FREE_TIER_UNVERIFIED:
     'Gemini is paused until its key and billing-disabled Free Tier project are manually verified again.',

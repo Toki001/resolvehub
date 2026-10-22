@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { jest } from '@jest/globals';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Redis } from 'ioredis';
@@ -177,6 +177,39 @@ test('concurrency admission does not multiply with replicas and release recovers
   await a.release(lease);
   await b.release(await b.acquire(signal()));
   expect((await a.status()).canGenerate).toBe(true);
+});
+test('a model change cannot inherit old Live status or evade project request and quota limits', async () => {
+  const p = prefix(),
+    settings = access();
+  const key = `${p}:gemini:${createHash('sha256')
+    .update(settings.projectId ?? '')
+    .digest('hex')}`;
+  await redis.set(
+    `${key}:failure`,
+    JSON.stringify({ category: 'GEMINI_MODEL_UNAVAILABLE', until: Date.now() + 86400000 }),
+    'EX',
+    86400,
+  );
+  await redis.set(
+    `${key}:last-success:${settings.keySha256}`,
+    new Date().toISOString(),
+    'EX',
+    86400,
+  );
+  const budget = new RedisGeminiBudget(redis, settings, p);
+  expect(await budget.status()).toMatchObject({
+    mode: 'unavailable',
+    canGenerate: true,
+    reasonCode: 'GEMINI_NOT_YET_VERIFIED',
+    lastSuccessfulAt: null,
+  });
+  const lease = await budget.acquire(signal());
+  await budget.release(lease);
+  expect(await redis.zcard(`${key}:requests`)).toBe(1);
+  await redis.set(`${key}:blocked`, String(Date.now() + 86400000), 'EX', 86400);
+  await expect(budget.acquire(signal())).rejects.toThrow('GEMINI_QUOTA_EXHAUSTED');
+  expect((await budget.status()).canGenerate).toBe(false);
+  expect(await redis.zcard(`${key}:requests`)).toBe(1);
 });
 test('missing configuration and model outages never claim Gemini Live; transient cooldown needs observed recovery', async () => {
   const p = prefix(),

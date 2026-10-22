@@ -1220,6 +1220,7 @@ components:
             - INTERNAL_ERROR
             - GEMINI_NOT_CONFIGURED
             - GEMINI_FREE_TIER_UNVERIFIED
+            - GEMINI_MODEL_UNVERIFIED
             - GEMINI_SYNTHETIC_SCOPE_REQUIRED
             - GEMINI_QUOTA_EXHAUSTED
             - GEMINI_MINUTE_LIMIT
@@ -1227,6 +1228,7 @@ components:
             - GEMINI_BUSY
             - GEMINI_TIMEOUT
             - GEMINI_UNAVAILABLE
+            - GEMINI_INVALID_REQUEST
             - GEMINI_MODEL_UNAVAILABLE
             - GEMINI_INVALID_RESPONSE
         message:

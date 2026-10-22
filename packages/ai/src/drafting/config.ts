@@ -23,7 +23,7 @@ export const draftConfigSchema = z.object({
   maxCostUsd: z.number().min(0).max(0.02).default(0.02),
   inputUsdPerMillion: z.number().finite().min(0).max(1000).default(0),
   outputUsdPerMillion: z.number().finite().min(0).max(1000).default(0),
-  priceDate: z.iso.date().default('2026-10-21'),
+  priceDate: z.iso.date().default('2026-10-22'),
 });
 export type DraftConfig = z.infer<typeof draftConfigSchema>;
 export function parseDraftConfig(env: NodeJS.ProcessEnv): DraftConfig {
@@ -65,7 +65,7 @@ export function parseDraftConfig(env: NodeJS.ProcessEnv): DraftConfig {
       throw new Error('Mock model mismatch');
     if (
       config.provider === 'gemini' &&
-      (config.model !== 'gemini-2.5-flash-lite' ||
+      (config.model !== 'gemini-3.5-flash-lite' ||
         config.inputUsdPerMillion !== 0 ||
         config.outputUsdPerMillion !== 0 ||
         config.maxPromptTokens > 4096 ||

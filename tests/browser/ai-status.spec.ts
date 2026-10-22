@@ -12,7 +12,7 @@ test('provider status updates to unavailable after a failed status request witho
           json: {
             mode: 'gemini_live',
             provider: 'gemini',
-            model: 'gemini-2.5-flash-lite',
+            model: 'gemini-3.5-flash-lite',
             embeddingModel: 'resolvehub-synthetic-sha256-v1',
             canGenerate: true,
             freeTierVerified: true,

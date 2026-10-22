@@ -25,7 +25,7 @@ import {
 const report: Record<string, unknown> = {
   status: 'not_run',
   provider: 'gemini',
-  model: 'gemini-2.5-flash-lite',
+  model: 'gemini-3.5-flash-lite',
   embeddingModel: 'resolvehub-synthetic-sha256-v1',
   billing: 'manual verified Free Tier only',
   generatedAt: new Date().toISOString(),
@@ -99,7 +99,7 @@ try {
   const config = parseDraftConfig({
     ...process.env,
     DRAFT_PROVIDER: 'gemini',
-    DRAFT_MODEL: 'gemini-2.5-flash-lite',
+    DRAFT_MODEL: 'gemini-3.5-flash-lite',
   });
   const fixtures = await readEvaluationFixtures(),
     first = fixtures.cases[0];

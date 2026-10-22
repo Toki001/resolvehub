@@ -44,6 +44,7 @@ const allowedValues: Record<string, readonly string[]> = {
     'resolvehub-synthetic-sha256-v1',
     'operator-configured',
     'gemini-2.5-flash-lite',
+    'gemini-3.5-flash-lite',
   ],
   token_type: ['input', 'output', 'embedding'],
   method: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'OTHER'],

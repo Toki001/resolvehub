@@ -51,7 +51,10 @@
     "dashboard:setup": "pnpm db:migrate && dotenv -e .env -- tsx scripts/setup-dashboard.ts",
     "test:dashboard": "pnpm build && tsx scripts/test-integration.ts --dashboard",
     "ai:gemini:verify": "turbo run build --filter=@resolvehub/ai && dotenv -e .env -- tsx scripts/verify-gemini-free.ts",
-    "ai:gemini:smoke": "turbo run build --filter=@resolvehub/ai --filter=@resolvehub/db --filter=@resolvehub/contracts && dotenv -e .env -- tsx scripts/gemini-live-smoke.ts"
+    "ai:gemini:smoke": "turbo run build --filter=@resolvehub/ai --filter=@resolvehub/db --filter=@resolvehub/contracts && dotenv -e .env -- tsx scripts/gemini-live-smoke.ts",
+    "ai:gemini:models": "turbo run build --filter=@resolvehub/ai && dotenv -e .env -- tsx scripts/gemini-models.ts",
+    "ai:gemini:text-smoke": "turbo run build --filter=@resolvehub/ai && dotenv -e .env -- tsx scripts/gemini-text-smoke.ts",
+    "ai:gemini:workflow-smoke": "turbo run build --filter=@resolvehub/ai && dotenv -e .env -- tsx scripts/gemini-workflow-smoke.ts"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",

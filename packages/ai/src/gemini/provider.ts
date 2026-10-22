@@ -10,25 +10,6 @@ import type {
 import { GEMINI_MODEL, GeminiFailure, geminiEligibility, retryAfterMs } from './config.js';
 import type { GeminiBudget, GeminiConfig } from './config.js';
 
-const outputSchema = {
-  type: 'object',
-  properties: {
-    kind: { type: 'string', enum: ['answer', 'insufficient_evidence'] },
-    claims: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          chunkId: { type: 'string' },
-          text: { type: 'string' },
-          quote: { type: 'string' },
-        },
-        required: ['chunkId', 'text', 'quote'],
-      },
-    },
-  },
-  required: ['kind', 'claims'],
-};
 // No Vertex, tools, grounding, cache, batch, model fallback or SDK retries.
 // A manual, key-bound free-tier attestation is checked before EVERY call.
 export class GeminiDraftProvider implements GenerationProvider {
@@ -93,11 +74,13 @@ export class GeminiDraftProvider implements GenerationProvider {
             if (!response.ok) {
               await response.body?.cancel();
               throw new GeminiFailure(
-                status === 429
-                  ? 'GEMINI_QUOTA_EXHAUSTED'
-                  : status === 404
-                    ? 'GEMINI_MODEL_UNAVAILABLE'
-                    : 'GEMINI_UNAVAILABLE',
+                status === 400
+                  ? 'GEMINI_INVALID_REQUEST'
+                  : status === 429
+                    ? 'GEMINI_QUOTA_EXHAUSTED'
+                    : status === 404
+                      ? 'GEMINI_MODEL_UNAVAILABLE'
+                      : 'GEMINI_UNAVAILABLE',
                 retry,
                 status >= 500 || status === 408,
               );
@@ -129,13 +112,12 @@ export class GeminiDraftProvider implements GenerationProvider {
         contents: input.prompt,
         config: {
           abortSignal: signal,
-          temperature: 0,
-          candidateCount: 1,
           maxOutputTokens: input.maxOutputTokens,
-          thinkingConfig: { thinkingBudget: 0 },
+          // This model defaults to minimal thinking. Use the verified standard
+          // text configuration: legacy JSON fields and newer responseFormat
+          // variants were rejected by this project's endpoint. The prompt asks
+          // for JSON; parsing and evidence validation remain mandatory locally.
           automaticContinuation: false,
-          responseMimeType: 'application/json',
-          responseJsonSchema: outputSchema,
         },
       });
       let abort: () => void = () => undefined;
@@ -171,7 +153,9 @@ export class GeminiDraftProvider implements GenerationProvider {
       let output: unknown = null;
       if (result.candidates?.length === 1 && result.candidates[0]?.finishReason === 'STOP') {
         try {
-          output = JSON.parse(result.text ?? '');
+          const text = (result.text ?? '').trim();
+          const fenced = /^```(?:json)?\s*\n([\s\S]*?)\n```$/.exec(text);
+          output = JSON.parse(fenced?.[1] ?? text);
         } catch {
           /* Runtime pipeline validation abstains. */
         }
@@ -185,11 +169,15 @@ export class GeminiDraftProvider implements GenerationProvider {
           : new GeminiFailure(
               signal.aborted
                 ? 'GEMINI_TIMEOUT'
-                : status === 404
-                  ? 'GEMINI_MODEL_UNAVAILABLE'
-                  : status === 429
-                    ? 'GEMINI_QUOTA_EXHAUSTED'
-                    : 'GEMINI_UNAVAILABLE',
+                : status === 400
+                  ? 'GEMINI_INVALID_REQUEST'
+                  : status === 200
+                    ? 'GEMINI_INVALID_RESPONSE'
+                    : status === 404
+                      ? 'GEMINI_MODEL_UNAVAILABLE'
+                      : status === 429
+                        ? 'GEMINI_QUOTA_EXHAUSTED'
+                        : 'GEMINI_UNAVAILABLE',
               retry,
               signal.aborted || status === 0 || status >= 500 || status === 408,
             );

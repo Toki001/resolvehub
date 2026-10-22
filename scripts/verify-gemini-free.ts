@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { chmod, readFile, writeFile } from 'node:fs/promises';
 import { z } from 'zod';
-import { geminiEligibility, parseGeminiConfig } from '@resolvehub/ai';
+import { GEMINI_MODEL, geminiEligibility, parseGeminiConfig } from '@resolvehub/ai';
 
 // Records an OPERATOR assertion, never discovers billing from a successful key.
 // This utility makes no Google requests and cannot change an account or billing.
@@ -16,7 +16,7 @@ if (
   )
 )
   throw new Error(
-    'Manual AI Studio verification required: --confirm-free-tier --confirm-billing-disabled --confirm-synthetic-only, --project ID and --organization UUID',
+    'Manual AI Studio verification required: --confirm-free-tier --confirm-billing-disabled --confirm-synthetic-only, --project ID, --model and --organization UUID',
   );
 const apiKey = z.string().min(20).parse(process.env.GEMINI_API_KEY);
 const project = z
@@ -24,9 +24,11 @@ const project = z
   .regex(/^[a-z][a-z0-9-]{4,62}$/)
   .parse(argument('--project'));
 const organization = z.uuid().parse(argument('--organization'));
+const model = z.literal(GEMINI_MODEL).parse(argument('--model'));
 const values = {
   DRAFT_PROVIDER: 'gemini',
-  DRAFT_MODEL: 'gemini-2.5-flash-lite',
+  DRAFT_MODEL: model,
+  GEMINI_FREE_TIER_MODEL: model,
   GEMINI_PROJECT_ID: project,
   GEMINI_FREE_TIER_VERIFIED_AT: new Date().toISOString(),
   GEMINI_FREE_TIER_KEY_SHA256: createHash('sha256').update(apiKey).digest('hex'),

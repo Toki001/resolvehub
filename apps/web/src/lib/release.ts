@@ -1,4 +1,4 @@
 export const release = {
-  milestone: '09',
-  totalMilestones: '09',
+  milestone: '10',
+  totalMilestones: '10',
 } as const;

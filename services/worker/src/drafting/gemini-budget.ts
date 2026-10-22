@@ -54,7 +54,7 @@ export class RedisGeminiBudget implements GeminiBudget {
             `${this.key}:requests`,
             `${this.key}:leases`,
             `${this.key}:blocked`,
-            `${this.key}:failure`,
+            `${this.key}:model:${GEMINI_MODEL}:failure`,
             this.config.requestsPerMinute,
             this.config.requestsPerDay,
             this.config.concurrency,
@@ -95,7 +95,7 @@ export class RedisGeminiBudget implements GeminiBudget {
     if (failure.category === 'GEMINI_QUOTA_EXHAUSTED') this.localBlockUntil = Date.now() + delay;
     try {
       await this.redis.set(
-        `${this.key}:failure`,
+        `${this.key}:model:${GEMINI_MODEL}:failure`,
         JSON.stringify({ category: failure.category, until: Date.now() + delay }),
         'PX',
         Math.max(86400000, delay),
@@ -109,12 +109,12 @@ export class RedisGeminiBudget implements GeminiBudget {
   async succeeded(_inputTokens: number, _outputTokens: number) {
     try {
       await this.redis.set(
-        `${this.key}:last-success:${this.config.keySha256}`,
+        `${this.key}:model:${GEMINI_MODEL}:last-success:${this.config.keySha256}`,
         new Date().toISOString(),
         'EX',
         86400,
       );
-      await this.redis.del(`${this.key}:failure`);
+      await this.redis.del(`${this.key}:model:${GEMINI_MODEL}:failure`);
     } catch {
       /* Preserve reported usage; missing status heartbeat fails closed. */
     }
@@ -141,8 +141,8 @@ export class RedisGeminiBudget implements GeminiBudget {
       (await this.redis
         .multi()
         .get(`${this.key}:blocked`)
-        .get(`${this.key}:failure`)
-        .get(`${this.key}:last-success:${this.config.keySha256}`)
+        .get(`${this.key}:model:${GEMINI_MODEL}:failure`)
+        .get(`${this.key}:model:${GEMINI_MODEL}:last-success:${this.config.keySha256}`)
         .zcount(`${this.key}:requests`, Date.now() - 86400000, '+inf')
         .zcount(`${this.key}:requests`, Date.now() - 60000, '+inf')
         .zcount(`${this.key}:leases`, Date.now(), '+inf')

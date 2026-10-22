@@ -24,7 +24,7 @@ export class AiStatusService {
       provider: this.env.DRAFT_PROVIDER,
       model:
         this.env.DRAFT_PROVIDER === 'gemini'
-          ? 'gemini-2.5-flash-lite'
+          ? 'gemini-3.5-flash-lite'
           : this.env.DRAFT_PROVIDER === 'mock'
             ? 'resolvehub-extractive-mock-v1'
             : 'operator-configured',
@@ -41,6 +41,8 @@ export class AiStatusService {
       if (!value) return unavailable;
       const envelope = aiStatusEnvelopeSchema.parse(JSON.parse(value));
       if (envelope.status.provider !== this.env.DRAFT_PROVIDER) return unavailable;
+      if (this.env.DRAFT_PROVIDER === 'gemini' && envelope.status.model !== unavailable.model)
+        return unavailable;
       if (
         envelope.status.provider === 'gemini' &&
         !envelope.syntheticOrganizations.includes(organizationId)

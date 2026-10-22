@@ -66,7 +66,7 @@ export function JobProgress({
   return (
     <div className="job-progress" aria-live="polite">
       <strong>Background job: {state.status}</strong>
-      <span>Attempt {state.attempts} of 4</span>
+      <span>Attempt {state.attempts}</span>
       {state.reasonCode && (
         <p>
           {state.reasonCode.startsWith('GEMINI_')
