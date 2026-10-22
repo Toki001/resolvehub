@@ -1,3 +1,4 @@
+import { aiFailureMessage } from '@resolvehub/contracts';
 import { BackgroundJobsDocument } from '@resolvehub/generated';
 import { graph, workspaceClient } from '@/lib/workspace-api';
 import { jobsSchema } from '@/lib/workspace-schemas';
@@ -17,7 +18,11 @@ async function Failure({ id, admin, kind }: { id: string; admin: boolean; kind: 
     <details className="failure-details">
       <summary>Failure details and replay</summary>
       <p>
-        {failure.errorCategory}: {failure.summary}
+        {failure.errorCategory}:{' '}
+        {kind === 'draft_response' ? aiFailureMessage(failure.errorCategory) : failure.summary}
+      </p>
+      <p className="muted">
+        Request {failure.requestId} · Job {id}
       </p>
       <ol>
         {failure.attemptHistory.map((a) => (

@@ -1,8 +1,10 @@
+import { geminiWire } from '../helpers/gemini-wire.js';
 import { jest } from '@jest/globals';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import {
   GeminiDraftProvider,
+  DraftingFailure,
   geminiEligibility,
   parseGeminiConfig,
   parseDraftConfig,
@@ -331,4 +333,79 @@ test('configuration rejects invalid flags, limits, paid prices and incompatible 
       EMBEDDING_DIMENSIONS: '768',
     }),
   ).toThrow();
+});
+
+test('SDK server deadline regression: five seconds is rejected offline; local abort stays independent', async () => {
+  const fixture = geminiWire('valid', {
+    chunkId: '70000000-0000-4000-8000-000000000001',
+    text: 'Synthetic policy.',
+    quote: 'Synthetic policy.',
+  });
+  const rejected = await fixture.transport(
+    'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent',
+    {
+      method: 'POST',
+      headers: { 'X-Server-Timeout': '5' },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: 'Synthetic policy.' }] }],
+        generationConfig: { maxOutputTokens: 512 },
+      }),
+    },
+  );
+  expect(rejected.status).toBe(400);
+  expect(await rejected.json()).toMatchObject({ error: { status: 'INVALID_ARGUMENT' } });
+  const result = await new GeminiDraftProvider(
+    geminiAccess(),
+    geminiDraftConfig(),
+    budget(),
+    fixture.transport,
+  ).generate(input, signal());
+  expect(result.output).toMatchObject({ kind: 'answer' });
+  expect(fixture.requests.map((request) => request.serverDeadlineSeconds)).toEqual([5, 10]);
+  const slow = geminiWire('timeout', {
+    chunkId: randomUUID(),
+    text: 'Synthetic',
+    quote: 'Synthetic',
+  });
+  const start = performance.now();
+  await expect(
+    new GeminiDraftProvider(
+      geminiAccess(),
+      { ...geminiDraftConfig(), timeoutMs: 100 },
+      budget(),
+      slow.transport,
+    ).generate(input, signal()),
+  ).rejects.toThrow('GEMINI_TIMEOUT');
+  expect(performance.now() - start).toBeLessThan(1000);
+  expect(slow.requests[0]?.serverDeadlineSeconds).toBe(10);
+});
+
+test('Gemini attempt budget permits a single-request acceptance run and rejects extra retry layers', () => {
+  expect(parseGeminiConfig({}).maxAttempts).toBe(2);
+  expect(parseGeminiConfig({ GEMINI_MAX_ATTEMPTS: '1' }).maxAttempts).toBe(1);
+  for (const value of ['0', '3', 'invalid'])
+    expect(() => parseGeminiConfig({ GEMINI_MAX_ATTEMPTS: value })).toThrow('GEMINI_MAX_ATTEMPTS');
+});
+
+test('response checkpoint failure is local persistence, never a provider health failure or duplicate HTTP retry', async () => {
+  const limits = budget(),
+    transport = jest
+      .fn<typeof fetch>()
+      .mockImplementation(async () =>
+        geminiResponse({ kind: 'insufficient_evidence', claims: [] }),
+      );
+  await expect(
+    new GeminiDraftProvider(geminiAccess(), geminiDraftConfig(), limits, transport).generate(
+      {
+        ...input,
+        onResponse: async () => {
+          throw new DraftingFailure('DRAFT_PERSISTENCE_FAILED', 'persistence');
+        },
+      },
+      signal(),
+    ),
+  ).rejects.toMatchObject({ category: 'DRAFT_PERSISTENCE_FAILED', stage: 'persistence' });
+  expect(limits.failed).not.toHaveBeenCalled();
+  expect(limits.release).toHaveBeenCalledTimes(1);
+  expect(transport).toHaveBeenCalledTimes(1);
 });

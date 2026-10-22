@@ -112,7 +112,7 @@ test('foreign tenant rows never reach a generation provider', async () => {
       organizationId: org,
       question,
     }),
-  ).rejects.toThrow('Retrieval scope violation');
+  ).rejects.toThrow('RAG_RETRIEVAL_FAILED');
   expect(generate).not.toHaveBeenCalled();
 });
 test.each([
@@ -200,7 +200,7 @@ test('deadline bounds an uncooperative provider and parent cancellation stops be
       config: { ...config, timeoutMs: 100 },
       generate: async () => new Promise<GenerationResult>(() => undefined),
     }).run({ organizationId: org, question }),
-  ).rejects.toThrow('timed out');
+  ).rejects.toThrow('DRAFT_TIMEOUT');
 });
 test('invalid query embedding and bad provider identity fail before retrieval', async () => {
   expect(
@@ -220,7 +220,7 @@ test('invalid query embedding and bad provider identity fail before retrieval', 
         organizationId: org,
         question,
       }),
-    ).rejects.toThrow('Invalid query embedding');
+    ).rejects.toThrow('RAG_RETRIEVAL_FAILED');
   }
 });
 test('citation formatting rejects unsafe quotation and preserves source identity', () => {

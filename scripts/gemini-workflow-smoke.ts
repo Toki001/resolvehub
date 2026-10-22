@@ -14,10 +14,13 @@ if (
   throw new Error('Live workflow requires explicit opt-in outside CI');
 const access = parseGeminiConfig(process.env);
 if (
+  access.maxAttempts !== 1 ||
   geminiEligibility(access) ||
   !access.organizations.includes('60000000-0000-4000-8000-000000000001')
 )
-  throw new Error('Current free-tier verification and reserved synthetic scope required');
+  throw new Error(
+    'Current free-tier verification, reserved synthetic scope and GEMINI_MAX_ATTEMPTS=1 on the restarted worker required',
+  );
 if (
   process.env.DRAFT_PROVIDER !== 'gemini' ||
   process.env.DRAFT_MODEL !== GEMINI_MODEL ||

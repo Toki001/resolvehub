@@ -15,6 +15,7 @@ import { RedisGeminiBudget } from './gemini-budget.js';
 import { KnowledgeRepository } from '@resolvehub/db';
 import type { createDatabase } from '@resolvehub/db';
 import { draftProcessor } from './processor.js';
+import type { DraftDiagnostic } from './processor.js';
 import { ingestionBackoff, ingestionOptions } from '../ingestion/runtime.js';
 import { ProviderLimiter } from '../ingestion/limiter.js';
 import type { WorkerEnv } from '../env.js';
@@ -25,6 +26,7 @@ export function createDraftRuntime(
   pool: ReturnType<typeof createDatabase>['pool'],
   config: DraftConfig,
   access: GeminiConfig = parseGeminiConfig({}),
+  adapters: { geminiTransport?: typeof fetch; report?: (diagnostic: DraftDiagnostic) => void } = {},
 ) {
   const producer = new Redis(env.REDIS_URL, {
     maxRetriesPerRequest: 1,
@@ -50,7 +52,7 @@ export function createDraftRuntime(
     config.provider === 'mock'
       ? new ExtractiveMockProvider()
       : config.provider === 'gemini'
-        ? new GeminiDraftProvider(access, config, budget)
+        ? new GeminiDraftProvider(access, config, budget, adapters.geminiTransport)
         : new OllamaDraftProvider(config);
   const limiter = new ProviderLimiter(
     producer,
@@ -80,7 +82,8 @@ export function createDraftRuntime(
     pipeline,
     signal: controller.signal,
     timeoutMs: config.timeoutMs + 1000,
-    maxAttempts: config.provider === 'gemini' ? 2 : 4,
+    maxAttempts: config.provider === 'gemini' ? access.maxAttempts : 4,
+    ...(adapters.report ? { report: adapters.report } : {}),
   });
   const worker = new Worker(
     DRAFT_QUEUE,

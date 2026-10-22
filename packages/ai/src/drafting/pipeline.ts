@@ -15,6 +15,8 @@ import {
 } from './evidence.js';
 import type { Evidence } from './evidence.js';
 import type { GenerationProvider } from './provider.js';
+import { DraftingFailure } from './failure.js';
+import type { DraftingProgress, DraftingStage } from './failure.js';
 
 export const PROMPT_VERSION = 'resolvehub-support-extractive-v1';
 export const SYSTEM_PROMPT =
@@ -42,17 +44,24 @@ export class DraftingPipeline {
   run(
     input: { organizationId: string; question: string; remainingBudgetUsd?: number },
     parent?: AbortSignal,
+    progress?: DraftingProgress,
   ) {
     return observed(
       'rag.draft',
       { provider: this.provider.name, model: modelLabel(this.provider.model) },
-      () => this.execute(input, parent),
+      () => this.execute(input, parent, progress),
     );
   }
   private async execute(
     input: { organizationId: string; question: string; remainingBudgetUsd?: number },
     parent: AbortSignal = new AbortController().signal,
+    progress: DraftingProgress = async () => undefined,
   ) {
+    const position: { stage: DraftingStage } = { stage: 'source' };
+    const move: DraftingProgress = async (next) => {
+      position.stage = next;
+      await progress(next);
+    };
     z.uuid().parse(input.organizationId);
     const question = z.string().trim().min(1).max(4000).parse(input.question);
     const budget = Math.min(
@@ -122,10 +131,10 @@ export class DraftingPipeline {
     });
     // A deadline also bounds adapters that ignore AbortSignal. DB statements have their own timeout.
     const guarded = async <T>(operation: () => Promise<T>) => {
-      controller.signal.throwIfAborted();
+      if (controller.signal.aborted) throw new DraftingFailure('DRAFT_TIMEOUT', position.stage);
       let listener: () => void = () => undefined;
       const aborted = new Promise<never>((_, reject) => {
-        listener = () => reject(new Error('Draft operation timed out or interrupted'));
+        listener = () => reject(new DraftingFailure('DRAFT_TIMEOUT', position.stage));
         controller.signal.addEventListener('abort', listener, { once: true });
       });
       try {
@@ -136,6 +145,7 @@ export class DraftingPipeline {
     };
     try {
       if (unsafeInstruction(question)) return finish([], 'unsafe_request');
+      await move('retrieval');
       const embeddingQuestion = question.slice(0, 1000);
       const vectors = await guarded(() =>
         observed(
@@ -165,13 +175,14 @@ export class DraftingPipeline {
         )
       ).map((row) => evidenceSchema.parse(row));
       if (retrieved.some((row) => row.organizationId !== input.organizationId))
-        throw new Error('Retrieval scope violation');
+        throw new DraftingFailure('RAG_RETRIEVAL_FAILED', 'retrieval', false);
       retrieved = (this.config.rerank ? rerankEvidence(question, retrieved) : retrieved).slice(
         0,
         5,
       );
       retrievalLatencyMs = performance.now() - start;
       observe('rag_retrieval_duration_seconds', retrievalLatencyMs / 1000);
+      await move('context');
       const render = () =>
         `${SYSTEM_PROMPT}\nTicket JSON: ${JSON.stringify({ question })}\nEvidence JSON: ${JSON.stringify(context.map(({ chunkId, text }) => ({ chunkId, text })))}`;
       for (const row of retrieved) {
@@ -187,6 +198,7 @@ export class DraftingPipeline {
         this.config.maxCostUsd
       )
         return finish([], 'cost_budget');
+      await move('generation');
       const generationStart = performance.now();
       const result = await observed(
         'rag.generation',
@@ -196,6 +208,7 @@ export class DraftingPipeline {
             this.provider.generate(
               {
                 organizationId: input.organizationId,
+                onResponse: () => move('response_parsing'),
                 prompt,
                 question,
                 evidence: context,
@@ -211,6 +224,7 @@ export class DraftingPipeline {
         });
         throw error;
       });
+      await move('response_parsing');
       generationLatencyMs = performance.now() - generationStart;
       observe('generation_duration_seconds', generationLatencyMs / 1000, {
         provider: this.provider.name,
@@ -242,6 +256,7 @@ export class DraftingPipeline {
       });
       if (estimateCost(inputTokens, outputTokens, this.config) > budget)
         return finish([], 'cost_budget');
+      await move('citation_validation');
       const output = generationOutputSchema.safeParse(result.output);
       if (!output.success) return finish([], 'invalid_generation');
       if (output.data.kind === 'insufficient_evidence') return finish([], 'insufficient_evidence');
@@ -249,6 +264,13 @@ export class DraftingPipeline {
         ? validateClaims(output.data, context)
         : undefined;
       return citations ? finish(citations, null) : finish([], 'invalid_citations');
+    } catch (error) {
+      if (error instanceof DraftingFailure) throw error;
+      if (position.stage === 'retrieval')
+        throw new DraftingFailure('RAG_RETRIEVAL_FAILED', position.stage);
+      if (position.stage === 'context')
+        throw new DraftingFailure('RAG_CONTEXT_FAILED', position.stage, false);
+      throw error;
     } finally {
       clearTimeout(timer);
       parent.removeEventListener('abort', abort);

@@ -169,3 +169,31 @@ test('read-only membership cannot use write controls, and switching tenants clea
     page.getByRole('heading', { name: 'Connect your workspace', exact: true }),
   ).toBeVisible();
 });
+
+test('draft persistence failure shows a useful recovery message without a success or review link', async ({
+  page,
+}) => {
+  if (!fixtures) throw new Error('Missing isolated fixtures');
+  await login(page, fixtures.credentials.adminA);
+  await createTicket(page);
+  // Browser-only failure boundary; normal isolated worker still uses mock AI.
+  await page.route('**/api/jobs/*', (route) =>
+    route.fulfill({
+      status: 200,
+      json: {
+        status: 'failed',
+        attempts: 1,
+        reasonCode: 'DRAFT_PERSISTENCE_FAILED',
+        resourceId: null,
+      },
+    }),
+  );
+  await page.getByRole('button', { name: 'Generate support draft', exact: true }).click();
+  const progress = page.locator('.job-progress');
+  await expect(progress).toContainText('Background job: failed');
+  await expect(progress).toContainText('The draft could not be saved.');
+  await expect(
+    progress.getByRole('link', { name: 'Inspect failure and replay options →', exact: true }),
+  ).toBeVisible();
+  await expect(progress.getByRole('link', { name: 'Review draft →', exact: true })).toHaveCount(0);
+});

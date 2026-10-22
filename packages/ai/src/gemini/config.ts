@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 export const GEMINI_MODEL = 'gemini-3.5-flash-lite';
+// SDK timeout also sets X-Server-Timeout. Keep this separate from local aborts.
+export const GEMINI_MIN_SERVER_TIMEOUT_MS = 10000;
 export const GEMINI_ATTESTATION_AGE_MS = 24 * 60 * 60 * 1000;
 const schema = z.object({
   apiKey: z
@@ -27,6 +29,7 @@ const schema = z.object({
   requestsPerMinute: z.number().int().min(1).max(5).default(2),
   requestsPerDay: z.number().int().min(1).max(100).default(10),
   concurrency: z.number().int().min(1).max(2).default(1),
+  maxAttempts: z.number().int().min(1).max(2).default(2),
 });
 export type GeminiConfig = z.infer<typeof schema>;
 export function parseGeminiConfig(env: NodeJS.ProcessEnv): GeminiConfig {
@@ -51,10 +54,12 @@ export function parseGeminiConfig(env: NodeJS.ProcessEnv): GeminiConfig {
         env.GEMINI_REQUESTS_PER_DAY === undefined ? undefined : Number(env.GEMINI_REQUESTS_PER_DAY),
       concurrency:
         env.GEMINI_CONCURRENCY === undefined ? undefined : Number(env.GEMINI_CONCURRENCY),
+      maxAttempts:
+        env.GEMINI_MAX_ATTEMPTS === undefined ? undefined : Number(env.GEMINI_MAX_ATTEMPTS),
     });
   } catch {
     throw new Error(
-      'Invalid Gemini configuration: GEMINI_API_KEY, GEMINI_PROJECT_ID, GEMINI_FREE_TIER_VERIFIED_AT, GEMINI_FREE_TIER_KEY_SHA256, GEMINI_FREE_TIER_MODEL, GEMINI_BILLING_DISABLED, GEMINI_FREE_TIER_CONFIRMED, GEMINI_SYNTHETIC_ONLY, GEMINI_SYNTHETIC_ORGANIZATION_IDS, GEMINI_REQUESTS_PER_MINUTE, GEMINI_REQUESTS_PER_DAY, GEMINI_CONCURRENCY',
+      'Invalid Gemini configuration: GEMINI_API_KEY, GEMINI_PROJECT_ID, GEMINI_FREE_TIER_VERIFIED_AT, GEMINI_FREE_TIER_KEY_SHA256, GEMINI_FREE_TIER_MODEL, GEMINI_BILLING_DISABLED, GEMINI_FREE_TIER_CONFIRMED, GEMINI_SYNTHETIC_ONLY, GEMINI_SYNTHETIC_ORGANIZATION_IDS, GEMINI_REQUESTS_PER_MINUTE, GEMINI_REQUESTS_PER_DAY, GEMINI_CONCURRENCY, GEMINI_MAX_ATTEMPTS',
     );
   }
 }

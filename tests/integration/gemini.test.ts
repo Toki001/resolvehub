@@ -1,3 +1,7 @@
+import { geminiWire } from '../helpers/gemini-wire.js';
+import { createDraftRuntime } from '../../services/worker/src/drafting/runtime.js';
+import { parseWorkerEnv } from '../../services/worker/src/env.js';
+import type { DraftDiagnostic } from '../../services/worker/src/drafting/processor.js';
 import 'reflect-metadata';
 import { jest } from '@jest/globals';
 import { randomUUID, createHash } from 'node:crypto';
@@ -5,7 +9,13 @@ import { Test } from '@nestjs/testing';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
-import { createDatabase, migrate, KnowledgeRepository, ContractStore } from '@resolvehub/db';
+import {
+  createDatabase,
+  migrate,
+  KnowledgeRepository,
+  ContractStore,
+  DraftSession,
+} from '@resolvehub/db';
 import {
   DraftingPipeline,
   SyntheticEmbeddingProvider,
@@ -144,6 +154,331 @@ afterAll(async () => {
   await pool.end();
   await admin.query(`DROP SCHEMA "${namespace}" CASCADE`);
   await admin.end();
+});
+
+async function post(path: string, body: unknown, key = randomUUID()) {
+  const response = await fetch(`${api}${path}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+      'Idempotency-Key': key,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(5000),
+  });
+  return { status: response.status, body: (await response.json()) as unknown };
+}
+async function until<T>(read: () => Promise<T>, ready: (value: T) => boolean) {
+  for (let attempt = 0; attempt < 250; attempt++) {
+    const value = await read();
+    if (ready(value)) return value;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error('Offline Gemini worker deadline exceeded');
+}
+const fixtureClaim = z
+  .object({ chunkId: z.uuid(), text: z.string(), quote: z.string() })
+  .parse(answer.claims[0]);
+
+test('real SDK wire fixture completes authenticated enqueue → BullMQ → scoped retrieval → GraphQL → edit/approve/internal history', async () => {
+  const wire = geminiWire('valid', fixtureClaim),
+    diagnostics: DraftDiagnostic[] = [];
+  const runtime = createDraftRuntime(
+    parseWorkerEnv({
+      ...process.env,
+      DATABASE_URL: url.href,
+      INGESTION_QUEUE_PREFIX: apiPrefix,
+    }),
+    pool,
+    config,
+    { ...access(), maxAttempts: 1 },
+    { geminiTransport: wire.transport, report: (event) => diagnostics.push(event) },
+  );
+  try {
+    await until(
+      () => ai.status(org),
+      (status) => status.canGenerate,
+    );
+    const ticket = await post('/v1/tickets', {
+      subject: 'What is the refund window?',
+      message: 'What is the refund window?',
+      customerEmail: 'synthetic@example.test',
+    });
+    expect(ticket.status).toBe(201);
+    const ticketId = schema('Ticket', ticket.body).id;
+    const key = randomUUID(),
+      path = `/v1/tickets/${ticketId}/drafts`;
+    const accepted = await post(path, {}, key);
+    expect(accepted.status).toBe(202);
+    expect((await post(path, {}, key)).body).toEqual(accepted.body);
+    const receipt = schema('AcceptedJob', accepted.body);
+    const completed = await until(
+      async () => {
+        const response = await fetch(`${api}/v1/jobs/${receipt.jobId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        expect(response.status).toBe(200);
+        return schema('Job', await response.json());
+      },
+      (job) => ['succeeded', 'failed'].includes(job.status),
+    );
+    expect(completed).toMatchObject({ status: 'succeeded', attempts: 1 });
+    const graph = await fetch(`${api}/graphql`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query:
+          'query($id:ID!){draft(id:$id){id text status evidenceValidated citations{documentId versionId chunkId quote}}}',
+        variables: { id: receipt.jobId },
+      }),
+    });
+    expect(await graph.json()).toMatchObject({
+      data: {
+        draft: {
+          status: 'pending',
+          evidenceValidated: true,
+          text: `${fixtureClaim.text} [1]`,
+          citations: [
+            {
+              documentId: source.documentId,
+              versionId: source.versionId,
+              chunkId: source.chunkId,
+              quote: fixtureClaim.quote,
+            },
+          ],
+        },
+      },
+    });
+    const draft = schema('Draft', await store.tenant(org).draft(receipt.jobId));
+    expect(draft.generation).toMatchObject({
+      provider: 'gemini',
+      outcome: 'answer',
+      inputTokens: 120,
+      outputTokens: 30,
+      tokenCountSource: 'provider_reported',
+    });
+    expect(await store.tenant(evalId('org:1')).draft(receipt.jobId)).toBeUndefined();
+    expect(wire.requests).toHaveLength(1);
+    expect(wire.requests[0]?.serverDeadlineSeconds).toBe(10);
+    expect(wire.requests[0]?.prompt).toContain(source.chunkId);
+    expect(wire.requests[0]?.prompt).not.toContain('BETA_PRIVATE_9M4');
+    expect(wire.requests[0]?.prompt).not.toContain('OBSOLETE_DO_NOT_USE');
+    const edited = `Thanks for contacting support. ${fixtureClaim.text} [1]`;
+    const edit = await post(`/v1/drafts/${receipt.jobId}/edits`, {
+      expectedRevision: 1,
+      text: edited,
+    });
+    expect(edit.status).toBe(200);
+    expect(schema('Draft', edit.body)).toMatchObject({
+      revision: 2,
+      humanEdited: true,
+      text: edited,
+    });
+    const approvalKey = randomUUID(),
+      approvalPath = `/v1/drafts/${receipt.jobId}/approve`;
+    const approved = await post(
+      approvalPath,
+      { expectedRevision: 2, acknowledgeEdits: true },
+      approvalKey,
+    );
+    expect(approved.status).toBe(200);
+    expect(
+      (await post(approvalPath, { expectedRevision: 2, acknowledgeEdits: true }, approvalKey)).body,
+    ).toEqual(approved.body);
+    const history = await pool.query<{ body: string; delivery_status: string }>(
+      'SELECT body,delivery_status FROM ticket_messages WHERE organization_id=$1 AND source_draft_id=$2',
+      [org, receipt.jobId],
+    );
+    expect(history.rows).toEqual([{ body: edited, delivery_status: 'internal' }]);
+    await until(
+      () => ai.status(org),
+      (status) => status.mode === 'gemini_live',
+    );
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        event: 'draft.completed',
+        requestId: expect.any(String),
+        jobId: receipt.jobId,
+        stage: 'complete',
+        outcome: 'answer',
+        attempt: 1,
+        maxAttempts: 1,
+      }),
+    );
+    const logs = JSON.stringify(diagnostics);
+    expect(logs).not.toContain(access().apiKey);
+    expect(logs).not.toContain(fixtureClaim.quote);
+    expect(logs).not.toContain('synthetic@example.test');
+  } finally {
+    await runtime.close();
+    await redis.del(`${apiPrefix}:ai:status`);
+  }
+});
+
+test.each([
+  ['valid', null, null],
+  ['missing_citations', 'invalid_citations', null],
+  ['invalid_citations', 'invalid_citations', null],
+  ['empty', 'invalid_generation', null],
+  ['invalid_json', 'invalid_generation', null],
+  ['truncated', 'invalid_generation', null],
+  ['invalid_metadata', null, 'GEMINI_INVALID_RESPONSE'],
+  ['quota', null, 'GEMINI_QUOTA_EXHAUSTED'],
+  ['invalid_model', null, 'GEMINI_MODEL_UNAVAILABLE'],
+  ['unavailable', null, 'GEMINI_UNAVAILABLE'],
+  ['timeout', null, 'GEMINI_TIMEOUT'],
+] as const)(
+  'official SDK fixture %s is processed durably without fabricated evidence or duplicate HTTP attempts',
+  async (scenario, abstention, failure) => {
+    const job = await createJob(),
+      wire = geminiWire(scenario, fixtureClaim),
+      diagnostics: DraftDiagnostic[] = [];
+    // Pipeline deadline is longer so this case deterministically tests adapter timeout.
+    const localConfig = { ...config, timeoutMs: scenario === 'timeout' ? 500 : config.timeoutMs };
+    const adapterConfig = { ...config, timeoutMs: scenario === 'timeout' ? 100 : config.timeoutMs };
+    const rag = new DraftingPipeline(
+      new SyntheticEmbeddingProvider(),
+      new GeminiDraftProvider(
+        access(),
+        adapterConfig,
+        new RedisGeminiBudget(redis, access(), prefix()),
+        wire.transport,
+      ),
+      {
+        search: (tenant, query, vector, first) =>
+          new KnowledgeRepository(pool, tenant).search(query, vector, first),
+      },
+      localConfig,
+    );
+    const process = draftProcessor({
+      pool,
+      pipeline: rag,
+      maxAttempts: 1,
+      report: (event) => diagnostics.push(event),
+    });
+    if (failure) {
+      await expect(process(job.data)).rejects.toThrow(failure);
+      const failed = schema('FailedJob', await store.tenant(org).failure(job.id));
+      expect(failed).toMatchObject({
+        errorCategory: failure,
+        requestId: actor.requestId,
+        attemptHistory: [
+          expect.objectContaining({
+            attempt: 1,
+            stage: scenario === 'invalid_metadata' ? 'response_parsing' : 'generation',
+          }),
+        ],
+      });
+      expect(await store.tenant(org).draft(job.id)).toBeUndefined();
+      await process(job.data);
+    } else {
+      await process(job.data);
+      const draft = schema('Draft', await store.tenant(org).draft(job.id));
+      expect(draft.generation?.outcome).toBe(abstention ? 'insufficient_evidence' : 'answer');
+      if (abstention) {
+        expect(draft.generation?.abstentionReason).toBe(abstention);
+        expect(draft.evidenceValidated).toBe(false);
+        expect(draft.citations).toEqual([]);
+        expect((await post(`/v1/drafts/${job.id}/approve`, { expectedRevision: 1 })).status).toBe(
+          422,
+        );
+      }
+      expect(
+        (
+          await post(`/v1/drafts/${job.id}/reject`, {
+            expectedRevision: 1,
+            reason: 'Synthetic fixture review',
+          })
+        ).status,
+      ).toBe(200);
+    }
+    expect(wire.requests).toHaveLength(1);
+    expect(
+      (
+        await pool.query(
+          'SELECT id FROM ticket_messages WHERE organization_id=$1 AND source_draft_id=$2',
+          [org, job.id],
+        )
+      ).rowCount,
+    ).toBe(0);
+    expect(JSON.stringify(diagnostics)).not.toContain('Private fixture diagnostic');
+  },
+);
+
+test('retrieval and persistence failures are distinct; rollback does not publish a partial Gemini draft', async () => {
+  const wire = geminiWire('valid', fixtureClaim),
+    retrieval = await createJob();
+  const rag = new DraftingPipeline(
+    new SyntheticEmbeddingProvider(),
+    new GeminiDraftProvider(
+      access(),
+      config,
+      new RedisGeminiBudget(redis, access(), prefix()),
+      wire.transport,
+    ),
+    {
+      search: async () => {
+        throw new Error('private database details');
+      },
+    },
+    config,
+  );
+  await expect(
+    draftProcessor({ pool, pipeline: rag, maxAttempts: 1 })(retrieval.data),
+  ).rejects.toThrow('RAG_RETRIEVAL_FAILED');
+  expect(wire.requests).toHaveLength(0);
+  expect(schema('FailedJob', await store.tenant(org).failure(retrieval.id))).toMatchObject({
+    attemptHistory: [
+      expect.objectContaining({ stage: 'retrieval', errorCategory: 'RAG_RETRIEVAL_FAILED' }),
+    ],
+  });
+  const write = await createJob();
+  try {
+    await pool.query(
+      `CREATE FUNCTION fail_gemini_publication() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.resource_id='${write.id}'::uuid THEN RAISE EXCEPTION 'private injected failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER fail_gemini_publication BEFORE INSERT ON audit_events FOR EACH ROW EXECUTE FUNCTION fail_gemini_publication()`,
+    );
+    await expect(
+      draftProcessor({ pool, pipeline: pipeline(wire.transport), maxAttempts: 1 })(write.data),
+    ).rejects.toThrow('DRAFT_PERSISTENCE_FAILED');
+    expect(await store.tenant(org).draft(write.id)).toBeUndefined();
+    expect(
+      (await pool.query('SELECT id FROM citations WHERE draft_id=$1', [write.id])).rowCount,
+    ).toBe(0);
+    expect(schema('FailedJob', await store.tenant(org).failure(write.id))).toMatchObject({
+      errorCategory: 'DRAFT_PERSISTENCE_FAILED',
+      attemptHistory: [expect.objectContaining({ stage: 'persistence' })],
+    });
+    expect(
+      (await pool.query('SELECT usage FROM job_attempts WHERE job_id=$1', [write.id])).rows[0]
+        ?.usage,
+    ).toMatchObject({ inputTokens: 120, outputTokens: 30 });
+  } finally {
+    await pool.query(
+      'DROP TRIGGER IF EXISTS fail_gemini_publication ON audit_events; DROP FUNCTION IF EXISTS fail_gemini_publication()',
+    );
+  }
+});
+
+test('abandoned Gemini claims cannot expand the configured one-attempt cloud budget', async () => {
+  const job = await createJob(),
+    session = await DraftSession.open(pool, org, job.id);
+  if (!session) throw new Error('Missing fixture job');
+  try {
+    expect(await session.claim(1)).toBe('run');
+  } finally {
+    await session.close();
+  }
+  await pool.query('UPDATE job_runs SET available_at=now() WHERE id=$1', [job.id]);
+  const wire = geminiWire('valid', fixtureClaim);
+  await expect(
+    draftProcessor({ pool, pipeline: pipeline(wire.transport), maxAttempts: 1 })(job.data),
+  ).rejects.toThrow('WORKER_INTERRUPTED');
+  expect(wire.requests).toHaveLength(0);
+  expect(schema('Job', await store.tenant(org).job(job.id))).toMatchObject({
+    status: 'failed',
+    attempts: 1,
+  });
 });
 
 test('Redis atomically bounds shared concurrency and keeps rolling daily/minute budgets across replicas', async () => {
@@ -396,9 +731,14 @@ test('a quota-exhausted job stops after one attempt, records a replayable DLQ, a
     errorCategory: 'GEMINI_QUOTA_EXHAUSTED',
   });
   expect(transport).toHaveBeenCalledTimes(1);
-  expect((await pool.query("SELECT id FROM ticket_messages WHERE author='agent'")).rowCount).toBe(
-    0,
-  );
+  expect(
+    (
+      await pool.query(
+        "SELECT id FROM ticket_messages WHERE author='agent' AND source_draft_id=$1",
+        [input.id],
+      )
+    ).rowCount,
+  ).toBe(0);
   const replay = await store.mutate(actor, randomUUID(), 'manual-replay', '', async (repo) => ({
     status: 202,
     body: { id: await repo.replay(input.id, actor.requestId, member) },
@@ -511,4 +851,36 @@ test('authenticated status fails closed on stale/config mismatched heartbeats an
   expect((await ai.status(org)).canGenerate).toBe(false);
   await redis.set(`${apiPrefix}:ai:status`, 'invalid', 'EX', 5);
   expect((await ai.status(org)).canGenerate).toBe(false);
+});
+
+test('sanitized diagnostics retain request/job/trace correlation and logging failure never retries a committed draft', async () => {
+  const job = await createJob(),
+    wire = geminiWire('valid', fixtureClaim),
+    diagnostics: DraftDiagnostic[] = [];
+  const traceId = '1'.repeat(32);
+  await pool.query('UPDATE job_runs SET trace_context=$2 WHERE id=$1', [
+    job.id,
+    { traceparent: `00-${traceId}-${'2'.repeat(16)}-01` },
+  ]);
+  const handler = draftProcessor({
+    pool,
+    pipeline: pipeline(wire.transport),
+    report: (event) => {
+      diagnostics.push(event);
+      throw new Error('private logger details');
+    },
+  });
+  await handler(job.data);
+  await handler(job.data);
+  expect(diagnostics).toEqual([
+    expect.objectContaining({
+      event: 'draft.completed',
+      requestId: actor.requestId,
+      jobId: job.id,
+      traceId,
+      maxAttempts: 4,
+    }),
+  ]);
+  expect(wire.requests).toHaveLength(1);
+  expect(schema('Job', await store.tenant(org).job(job.id)).status).toBe('succeeded');
 });

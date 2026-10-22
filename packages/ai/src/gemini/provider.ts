@@ -7,8 +7,15 @@ import type {
   GenerationProvider,
   GenerationResult,
 } from '../drafting/provider.js';
-import { GEMINI_MODEL, GeminiFailure, geminiEligibility, retryAfterMs } from './config.js';
+import {
+  GEMINI_MODEL,
+  GEMINI_MIN_SERVER_TIMEOUT_MS,
+  GeminiFailure,
+  geminiEligibility,
+  retryAfterMs,
+} from './config.js';
 import type { GeminiBudget, GeminiConfig } from './config.js';
+import { DraftingFailure } from '../drafting/failure.js';
 
 // No Vertex, tools, grounding, cache, batch, model fallback or SDK retries.
 // A manual, key-bound free-tier attestation is checked before EVERY call.
@@ -56,7 +63,9 @@ export class GeminiDraftProvider implements GenerationProvider {
         apiVersion: 'v1beta',
         httpOptions: {
           baseUrl: 'https://generativelanguage.googleapis.com',
-          timeout: this.config.timeoutMs,
+          // The SDK sends this as a server deadline too. A short local timeout
+          // must not send a server deadline below Gemini's supported minimum.
+          timeout: Math.max(GEMINI_MIN_SERVER_TIMEOUT_MS, this.config.timeoutMs),
           retryOptions: { attempts: 1 },
           fetch: async (url: unknown, init) => {
             const target = new URL(z.string().parse(url));
@@ -85,6 +94,7 @@ export class GeminiDraftProvider implements GenerationProvider {
                 status >= 500 || status === 408,
               );
             }
+            await input.onResponse?.();
             const reader = response.body?.getReader();
             if (!reader) throw new GeminiFailure('GEMINI_INVALID_RESPONSE');
             const buffers: Uint8Array[] = [];
@@ -163,6 +173,9 @@ export class GeminiDraftProvider implements GenerationProvider {
       await this.budget.succeeded(inputTokens, outputTokens);
       return { output, inputTokens, outputTokens, tokenCountSource: 'provider_reported' };
     } catch (error) {
+      // A progress checkpoint can fail after an HTTP response. That is a local
+      // persistence failure, not a reason to poison provider health or retry HTTP.
+      if (error instanceof DraftingFailure) throw error;
       const failure =
         error instanceof GeminiFailure
           ? error

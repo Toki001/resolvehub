@@ -1,0 +1,321 @@
+{
+  "milestone": 11,
+  "baseline": "addd6c5",
+  "liveGeminiApiRequests": 0,
+  "liveAcceptance": "not_run",
+  "configuredGenerationModel": "gemini-3.5-flash-lite",
+  "configuredDailyApplicationLimit": 10,
+  "observedRollingDayApplicationRequests": 10,
+  "jest": {
+    "tests": 359,
+    "passed": 359,
+    "suites": 36,
+    "success": true
+  },
+  "coverage": {
+    "global": {
+      "lines": {
+        "total": 4925,
+        "covered": 4862,
+        "skipped": 0,
+        "pct": 98.72
+      },
+      "statements": {
+        "total": 4925,
+        "covered": 4862,
+        "skipped": 0,
+        "pct": 98.72
+      },
+      "functions": {
+        "total": 249,
+        "covered": 242,
+        "skipped": 0,
+        "pct": 97.18
+      },
+      "branches": {
+        "total": 1316,
+        "covered": 1215,
+        "skipped": 0,
+        "pct": 92.32
+      },
+      "branchesTrue": {
+        "total": 0,
+        "covered": 0,
+        "skipped": 0,
+        "pct": 100
+      }
+    },
+    "criticalBranches": {
+      "packages/ai/src/gemini/": {
+        "covered": 140,
+        "total": 153,
+        "percent": 91.5
+      },
+      "packages/ai/src/": {
+        "covered": 345,
+        "total": 365,
+        "percent": 94.52
+      },
+      "packages/db/src/": {
+        "covered": 272,
+        "total": 307,
+        "percent": 88.59
+      },
+      "services/worker/src/drafting/": {
+        "covered": 141,
+        "total": 157,
+        "percent": 89.8
+      },
+      "services/api/src/application/": {
+        "covered": 215,
+        "total": 227,
+        "percent": 94.71
+      }
+    },
+    "independentThresholdPercent": 80,
+    "thresholdsPassed": true
+  },
+  "browser": {
+    "passed": 16,
+    "projects": ["desktop", "mobile"],
+    "provider": "mock"
+  },
+  "offlineEvaluation": {
+    "fixtureDigest": "01a5a9b8ed414977187300b8ac56fcc62a5c7a87ecb2761ca44b5d4a1bc74eb5",
+    "generatedAt": "2026-10-22T06:08:33.501Z",
+    "environment": {
+      "node": "v22.22.3",
+      "platform": "darwin",
+      "arch": "arm64",
+      "cpu": "Apple M3 Pro",
+      "postgres": "17/pgvector",
+      "concurrency": 10
+    },
+    "provider": "mock",
+    "model": "resolvehub-extractive-mock-v1",
+    "embeddingModel": "resolvehub-synthetic-sha256-v1",
+    "retrievalMode": "hybrid_lexical_rerank",
+    "pricing": {
+      "inputUsdPerMillion": 0,
+      "outputUsdPerMillion": 0,
+      "effectiveDate": "2026-10-22",
+      "source": "deterministic mock; no API charges; not a live price estimate"
+    },
+    "cases": 60,
+    "corpusVersions": 136,
+    "splits": {
+      "answerable": {
+        "recallAt5": {
+          "numerator": 30,
+          "denominator": 30,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8864829086095221,
+            "upper": 1
+          }
+        },
+        "supportedClaims": {
+          "numerator": 30,
+          "denominator": 30,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8864829086095221,
+            "upper": 1
+          }
+        },
+        "correctAbstention": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "tenantLeakage": {
+          "numerator": 0,
+          "denominator": 30,
+          "value": 0,
+          "wilson95": {
+            "lower": 0,
+            "upper": 0.113517091390478
+          }
+        },
+        "answered": {
+          "numerator": 30,
+          "denominator": 30,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8864829086095221,
+            "upper": 1
+          }
+        },
+        "failures": []
+      },
+      "insufficient": {
+        "recallAt5": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "supportedClaims": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "correctAbstention": {
+          "numerator": 20,
+          "denominator": 20,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.8388698745050667,
+            "upper": 1
+          }
+        },
+        "tenantLeakage": {
+          "numerator": 0,
+          "denominator": 20,
+          "value": 0,
+          "wilson95": {
+            "lower": 0,
+            "upper": 0.16113012549493322
+          }
+        },
+        "answered": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "failures": []
+      },
+      "adversarial": {
+        "recallAt5": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "supportedClaims": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "correctAbstention": {
+          "numerator": 10,
+          "denominator": 10,
+          "value": 1,
+          "wilson95": {
+            "lower": 0.7224598312333834,
+            "upper": 1
+          }
+        },
+        "tenantLeakage": {
+          "numerator": 0,
+          "denominator": 10,
+          "value": 0,
+          "wilson95": {
+            "lower": 0,
+            "upper": 0.2775401687666166
+          }
+        },
+        "answered": {
+          "numerator": 0,
+          "denominator": 0,
+          "value": null,
+          "wilson95": null
+        },
+        "failures": []
+      }
+    },
+    "metrics": {
+      "recallAt5": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "supportedClaims": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "correctAbstention": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "tenantLeakage": {
+        "numerator": 0,
+        "denominator": 60,
+        "value": 0,
+        "wilson95": {
+          "lower": 0,
+          "upper": 0.06017393047793289
+        }
+      },
+      "answered": {
+        "numerator": 30,
+        "denominator": 30,
+        "value": 1,
+        "wilson95": {
+          "lower": 0.8864829086095221,
+          "upper": 1
+        }
+      },
+      "failures": []
+    },
+    "rawSyntheticVectorRecallAt5": {
+      "numerator": 2,
+      "denominator": 30,
+      "value": 0.06666666666666667,
+      "wilson95": {
+        "lower": 0.01847663532769335,
+        "upper": 0.21323817721072091
+      }
+    },
+    "latency": {
+      "requests": 60,
+      "p95Ms": 29.660875000001397,
+      "maxMs": 31.824458000002778,
+      "includes": "query embedding, PostgreSQL retrieval, context, mock generation, citation validation; excludes BullMQ queue delay"
+    },
+    "cost": {
+      "maxEstimatedUsd": 0,
+      "totalEstimatedUsd": 0
+    },
+    "targets": {
+      "recall": true,
+      "support": true,
+      "abstention": true,
+      "leakage": true,
+      "latency": true,
+      "cost": true,
+      "answers": true
+    },
+    "passed": true,
+    "limitations": [
+      "Small synthetic set; no production semantic generalization or live-provider SLA/cost claim.",
+      "Support measures exact-quotation support, not arbitrary prose entailment. Wilson intervals are descriptive; paired synthetic templates are not independent production samples.",
+      "Synthetic hash vectors are not semantic; hybrid lexical retrieval is evaluated and raw vector recall is reported separately.",
+      "Normal run uses mock token estimates and zero mock prices."
+    ]
+  },
+  "limits": [
+    "No new Google billing/free-quota verification was made. Existing manual assertion was preserved.",
+    "All token/cost values in the offline evaluation are mock estimates. SDK fixtures use deterministic 120 input / 30 output tokens.",
+    "No live retrieval/citation quality, draft latency, token usage or approval acceptance measurement is available.",
+    "Historical provider bodies are unavailable; the deadline defect does not prove the exclusive cause of all original failures."
+  ]
+}

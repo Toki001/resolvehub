@@ -49,6 +49,21 @@ export const aiStatusEnvelopeSchema = z.object({
   syntheticOrganizations: z.array(z.uuid()).max(10),
 });
 const aiMessages: Record<string, string> = {
+  RAG_RETRIEVAL_FAILED:
+    'Knowledge retrieval failed. Your ticket is saved; inspect the job before retrying.',
+  RAG_CONTEXT_FAILED:
+    'Retrieved knowledge could not be prepared safely. No reply was approved or sent.',
+  RAG_CITATION_VALIDATION_FAILED:
+    'The generated citations could not be verified. The draft abstained and cannot be approved.',
+  DRAFT_PERSISTENCE_FAILED:
+    'The draft could not be saved. No reply was added; inspect processing history before retrying.',
+  DRAFT_WORKER_FAILED:
+    'Draft processing failed. Your support records are saved; inspect the job for recovery options.',
+  DRAFT_TIMEOUT:
+    'Draft processing exceeded its deadline. Inspect processing history before retrying.',
+  EVIDENCE_CHANGED:
+    'Knowledge or ticket access changed during drafting. The stale draft was not published.',
+
   GEMINI_INVALID_REQUEST:
     'Gemini rejected the configured request. Live drafting is paused until the configuration is corrected.',
   GEMINI_MODEL_UNVERIFIED:

@@ -10,6 +10,7 @@ const jobSchema = z.object({
   requestedBy: z.uuid().nullable(),
   payload: z.unknown(),
   requestId: z.uuid(),
+  traceparent: z.string().nullable(),
 });
 const payloadSchema = z.object({ ticketId: z.uuid() }).strict();
 export interface DraftPublication {
@@ -50,7 +51,7 @@ export class DraftSession {
         [`${organizationId}:${jobId}`],
       );
       const rows = await client.query<{ data: unknown }>(
-        "SELECT jsonb_build_object('createdAt',created_at,'availableAt',available_at,'id',id,'organizationId',organization_id,'requestedBy',requested_by,'payload',payload,'requestId',request_id) data FROM job_runs WHERE organization_id=$1 AND id=$2 AND kind='draft_response'",
+        "SELECT jsonb_build_object('createdAt',created_at,'availableAt',available_at,'id',id,'organizationId',organization_id,'requestedBy',requested_by,'payload',payload,'requestId',request_id,'traceparent',trace_context->>'traceparent') data FROM job_runs WHERE organization_id=$1 AND id=$2 AND kind='draft_response'",
         [organizationId, jobId],
       );
       if (!lock.rows[0]?.locked || !rows.rows[0]) {
@@ -82,7 +83,8 @@ export class DraftSession {
       throw error;
     }
   }
-  async claim() {
+  async claim(maxAttempts = 4) {
+    z.number().int().min(1).max(4).parse(maxAttempts);
     return this.transaction(async () => {
       const result = await this.client.query<{ status: string; attempts: number; ready: boolean }>(
         'SELECT status,attempts,available_at<=now() ready FROM job_runs WHERE organization_id=$1 AND id=$2 FOR UPDATE',
@@ -95,7 +97,7 @@ export class DraftSession {
         "UPDATE job_attempts SET outcome='abandoned',error_category='WORKER_INTERRUPTED',summary='Draft worker interrupted.',finished_at=now() WHERE organization_id=$1 AND job_id=$2 AND outcome='running'",
         [this.job.organizationId, this.job.id],
       );
-      if (this.attemptNumber >= 4) return 'exhausted';
+      if (this.attemptNumber >= maxAttempts) return 'exhausted';
       this.attemptNumber++;
       await this.client.query(
         "UPDATE job_runs SET status='processing',attempts=$3,available_at=now()+interval '150 seconds',dispatch_after=now()+interval '150 seconds' WHERE organization_id=$1 AND id=$2",
@@ -148,6 +150,15 @@ export class DraftSession {
     );
     return this.usage();
   }
+  async checkpoint(stage: string) {
+    z.string()
+      .regex(/^[a-z_]{1,40}$/)
+      .parse(stage);
+    await this.client.query(
+      "UPDATE job_attempts SET stage=$4 WHERE organization_id=$1 AND job_id=$2 AND attempt=$3 AND outcome='running'",
+      [this.job.organizationId, this.job.id, this.attemptNumber, stage],
+    );
+  }
   async complete(publication: DraftPublication, question: string) {
     return this.transaction(async () => {
       const source = await this.source(true);
@@ -194,7 +205,7 @@ export class DraftSession {
         [this.job.organizationId, this.job.requestedBy, this.job.id, this.job.requestId],
       );
       await this.client.query(
-        "UPDATE job_attempts SET outcome='succeeded',finished_at=now() WHERE organization_id=$1 AND job_id=$2 AND attempt=$3",
+        "UPDATE job_attempts SET stage='complete',outcome='succeeded',finished_at=now() WHERE organization_id=$1 AND job_id=$2 AND attempt=$3",
         [this.job.organizationId, this.job.id, this.attemptNumber],
       );
       await this.client.query(
@@ -204,11 +215,21 @@ export class DraftSession {
       return true;
     });
   }
-  async fail(category: string, permanent: boolean, delayMs: number, replayEligible = !permanent) {
+  async fail(
+    category: string,
+    permanent: boolean,
+    delayMs: number,
+    replayEligible = !permanent,
+    stage?: string,
+  ) {
+    if (stage !== undefined)
+      z.string()
+        .regex(/^[a-z_]{1,40}$/)
+        .parse(stage);
     const terminal = permanent || this.attemptNumber >= 4;
     await this.transaction(async () => {
       await this.client.query(
-        'UPDATE job_attempts SET outcome=$4,error_category=$5,summary=$6,finished_at=now() WHERE organization_id=$1 AND job_id=$2 AND attempt=$3',
+        'UPDATE job_attempts SET outcome=$4,error_category=$5,summary=$6,stage=coalesce($7,stage),finished_at=now() WHERE organization_id=$1 AND job_id=$2 AND attempt=$3',
         [
           this.job.organizationId,
           this.job.id,
@@ -216,6 +237,7 @@ export class DraftSession {
           permanent ? 'permanent' : 'transient',
           category,
           `Draft processing failed: ${category}.`,
+          stage ?? null,
         ],
       );
       await this.client.query(

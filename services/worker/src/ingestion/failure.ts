@@ -1,4 +1,4 @@
-import { EmbeddingProviderError, GeminiFailure } from '@resolvehub/ai';
+import { EmbeddingProviderError, GeminiFailure, DraftingFailure } from '@resolvehub/ai';
 
 export class IngestionFailure extends Error {
   constructor(
@@ -23,6 +23,8 @@ export function retryDelay(attempt: number, base = 1000, random = Math.random, r
 }
 export function classify(error: unknown): IngestionFailure {
   if (error instanceof IngestionFailure) return error;
+  if (error instanceof DraftingFailure)
+    return new IngestionFailure(error.category, !error.transient, 0, true);
   if (error instanceof GeminiFailure)
     return new IngestionFailure(error.category, !error.transient, error.retryAfterMs, true);
   if (error instanceof EmbeddingProviderError) {

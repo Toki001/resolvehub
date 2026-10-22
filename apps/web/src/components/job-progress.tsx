@@ -68,11 +68,7 @@ export function JobProgress({
       <strong>Background job: {state.status}</strong>
       <span>Attempt {state.attempts}</span>
       {state.reasonCode && (
-        <p>
-          {state.reasonCode.startsWith('GEMINI_')
-            ? aiFailureMessage(state.reasonCode)
-            : state.reasonCode}
-        </p>
+        <p>{kind === 'draft_response' ? aiFailureMessage(state.reasonCode) : state.reasonCode}</p>
       )}
       {state.status === 'succeeded' && kind === 'draft_response' && state.resourceId && (
         <Link className="text-link" href={`/review/${state.resourceId}`}>

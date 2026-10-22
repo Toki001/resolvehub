@@ -6,6 +6,7 @@ import type { DraftConfig } from './config.js';
 import { tokenEstimate } from './config.js';
 
 export interface GenerationInput {
+  onResponse?: () => Promise<void>;
   organizationId?: string;
   prompt: string;
   question: string;
