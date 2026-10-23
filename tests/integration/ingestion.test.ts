@@ -508,6 +508,24 @@ test('provider rate limiting is shared across connections and cancellation stops
   }
 });
 
+test('cancellation while Redis grants a slot prevents provider admission', async () => {
+  const connection = await readyRedis();
+  const controller = new AbortController();
+  const grant = jest.spyOn(connection, 'eval').mockImplementationOnce(async () => {
+    controller.abort();
+    return 0;
+  });
+  try {
+    await expect(
+      new ProviderLimiter(connection, `cancel-grant-${randomUUID()}`, 1).acquire(controller.signal),
+    ).rejects.toThrow('WORKER_INTERRUPTED');
+    expect(grant).toHaveBeenCalledTimes(1);
+  } finally {
+    grant.mockRestore();
+    connection.disconnect();
+  }
+});
+
 test('a real PDF is extracted in a bounded worker thread and indexed', async () => {
   const content = 'BT /F1 12 Tf 72 720 Td (Synthetic PDF refunds require verification.) Tj ET';
   const objects = [

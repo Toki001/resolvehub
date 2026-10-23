@@ -18,6 +18,7 @@ export class ProviderLimiter {
       } catch {
         throw new IngestionFailure('REDIS_UNAVAILABLE');
       }
+      if (signal.aborted) throw new IngestionFailure('WORKER_INTERRUPTED');
       if (typeof wait !== 'number') throw new IngestionFailure('REDIS_UNAVAILABLE');
       if (wait === 0) return;
       await sleep(Math.max(1, wait), signal);
