@@ -1,5 +1,7 @@
 # Milestone 11 — Gemini RAG Worker Reliability Fix
 
+> Follow-up: [live acceptance passed on October 23](live-acceptance-2026-10-23.md), using one genuine Gemini request and the persisted draft for editing/approval. The report below retains the original October 22 offline-only evidence and limitations.
+
 2026-10-22; baseline `addd6c5`; macOS/arm64, Node 22.22.3, pnpm 12.10.1. **Offline repair and final live acceptance are separate. No Gemini API requests were made in this milestone**, including discovery. No paid model, billing change, provider substitution, embedding change, migration, developer-data reset, deployment or image push occurred.
 
 ## Original symptoms and retained evidence

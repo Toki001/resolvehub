@@ -1,0 +1,205 @@
+{
+  "baseline": "26f0a47",
+  "liveAcceptanceComplete": true,
+  "recordedAt": "2026-10-23T06:02:29.179Z",
+  "provider": "gemini",
+  "model": "gemini-3.5-flash-lite",
+  "embeddingModel": "resolvehub-synthetic-sha256-v1",
+  "embeddingDimensions": 64,
+  "maximumAuthorizedLiveRequests": 2,
+  "liveRequestsUsed": 1,
+  "preflight": {
+    "checkedAt": "2026-10-23T05:36:13.180Z",
+    "eligibilitySource": "User-confirmed AI Studio Free Tier, billing disabled/unlinked and exact model free quota, within the existing 24-hour key-bound verification window; not an independent billing audit.",
+    "projectId": "gen-lang-client-0088737565",
+    "model": "gemini-3.5-flash-lite",
+    "eligible": true,
+    "verificationRecordedAt": "2026-10-22T10:50:45.989Z",
+    "verificationExpiresAt": "2026-10-23T10:50:45.989Z",
+    "maxAttempts": 1,
+    "dailyLimit": 10,
+    "minuteLimit": 2,
+    "concurrency": 1,
+    "rollingDayRequests": 0,
+    "rollingMinuteRequests": 0,
+    "quotaBlockedUntil": null,
+    "failure": null,
+    "status": {
+      "mode": "unavailable",
+      "canGenerate": true,
+      "freeTierVerified": true,
+      "reasonCode": "GEMINI_NOT_YET_VERIFIED"
+    },
+    "liveCalls": 0,
+    "pendingDraftJobs": 0,
+    "localCredentialCurrent": false
+  },
+  "providerResponses": [
+    {
+      "sequence": 1,
+      "at": "2026-10-23T05:43:31.229Z",
+      "model": "gemini-3.5-flash-lite",
+      "serverDeadlineSeconds": 10,
+      "httpStatus": 200,
+      "headerLatencyMs": 1152.8840419999979,
+      "returnedModel": "gemini-3.5-flash-lite",
+      "usage": {
+        "promptTokenCount": 209,
+        "candidatesTokenCount": 111,
+        "totalTokenCount": 320
+      },
+      "finishReasons": ["STOP"],
+      "totalLatencyMs": 1154.634708999998
+    }
+  ],
+  "latencyMs": {
+    "retrieval": 11.907333000002836,
+    "generation": 1163.2565000000031,
+    "pipeline": 1177.4562080000032,
+    "queueAndUi": 2363.0184580000005
+  },
+  "pricing": {
+    "estimatedVariableApiCostUsd": 0,
+    "source": "operator-verified Free Tier; not an independent billing audit or invoice measurement",
+    "infrastructureCosts": "not measured"
+  },
+  "workflow": {
+    "generatedAt": "2026-10-23T05:46:15.412Z",
+    "status": "passed",
+    "draftId": "b9fbcf91-7975-493b-85ee-dd75cf98f105",
+    "ticketId": "2e2c83ac-6366-4485-9cf9-584f97420206",
+    "regenerated": false,
+    "externalDelivery": false,
+    "steps": [
+      "Persisted genuine Gemini answer and exact synthetic citation verified",
+      "Authenticated synthetic admin sign-in",
+      "Saved live draft opened through ticket review link",
+      "Human edit persisted as revision 2",
+      "Explicit human acknowledgement and approval succeeded",
+      "Exactly one edited Internal only reply visible in conversation",
+      "Authenticated GraphQL confirms saved edited message and internal delivery status",
+      "Dashboard shows Gemini Live"
+    ],
+    "generation": {
+      "provider": "gemini",
+      "model": "gemini-3.5-flash-lite",
+      "outcome": "answer",
+      "inputTokens": 209,
+      "outputTokens": 111,
+      "totalLatencyMs": 1177.4562080000032
+    },
+    "citations": [
+      {
+        "documentId": "d06c058d-ed38-47b0-99f3-48ad95337507",
+        "versionId": "62dba076-eecb-4d86-a312-42804a95ad53",
+        "chunkId": "9410a577-be0b-4528-a01f-f4d231ca2d4f",
+        "quote": "The live acceptance retention window is 19 days after request."
+      }
+    ],
+    "pathImmediatelyAfterReviewClick": "/tickets/2e2c83ac-6366-4485-9cf9-584f97420206",
+    "persistedMessage": {
+      "author": "agent",
+      "deliveryStatus": "internal",
+      "sourceDraftId": "b9fbcf91-7975-493b-85ee-dd75cf98f105",
+      "bodyMatchesHumanEdit": true
+    },
+    "dashboardMode": "gemini_live",
+    "cloudCalls": 1,
+    "liveAcceptanceComplete": true
+  },
+  "databaseVerification": {
+    "readOnly": true,
+    "verifiedAt": "2026-10-23T05:47:35.201Z",
+    "draft": {
+      "id": "b9fbcf91-7975-493b-85ee-dd75cf98f105",
+      "ticket_id": "2e2c83ac-6366-4485-9cf9-584f97420206",
+      "status": "approved",
+      "revision": 3,
+      "human_edited": true,
+      "evidence_validated": true,
+      "human_reviewer_recorded": true,
+      "reviewed_at_recorded": true,
+      "input_tokens": 209,
+      "output_tokens": 111,
+      "model": "gemini-3.5-flash-lite",
+      "source_job_id": "b9fbcf91-7975-493b-85ee-dd75cf98f105",
+      "authorized_current_exact_citations": 1,
+      "matching_internal_messages": 1,
+      "externally_delivered_messages": 0
+    },
+    "audits": [
+      {
+        "action": "draft.approved",
+        "count": 1
+      },
+      {
+        "action": "draft.edited",
+        "count": 1
+      },
+      {
+        "action": "draft.generated",
+        "count": 1
+      },
+      {
+        "action": "draft.requested",
+        "count": 1
+      }
+    ],
+    "job": [
+      {
+        "status": "succeeded",
+        "attempts": 1,
+        "stage": "complete",
+        "outcome": "succeeded"
+      }
+    ]
+  },
+  "regression": {
+    "jestTests": 360,
+    "jestPassed": 360,
+    "jestSuites": 36,
+    "jestSuccess": true,
+    "branchCoverage": {
+      "total": 1317,
+      "covered": 1216,
+      "skipped": 0,
+      "pct": 92.33
+    },
+    "independentCriticalBranchGatesPercent": 80,
+    "independentGatesPassed": true,
+    "browserChecks": 16,
+    "unitAndContractTests": 240,
+    "strictChecksPassed": true,
+    "contractsDrift": "passed",
+    "frozenInstall": "passed",
+    "security": {
+      "blocked": [],
+      "exceptions": ["GHSA-vfj7-8cjw-p6xm"],
+      "vulnerabilities": {
+        "info": 0,
+        "low": 0,
+        "moderate": 0,
+        "high": 1,
+        "critical": 0
+      }
+    },
+    "productionBuild": "passed",
+    "productionImages": "web/api/worker arm64 built locally after security patch; not pushed",
+    "dockerSmoke": "passed after security patch",
+    "productionComposeSyntax": "passed with example release references; not deployed"
+  },
+  "limitations": [
+    "Single synthetic case; no live p95, concurrency, general semantic accuracy, or abstention-rate benchmark.",
+    "Initial browser reload occurred before cloud access; regenerated build cache restored sign-in.",
+    "Initial verification harness read URL before review navigation completed; the persisted live draft was reviewed locally without regeneration.",
+    "Temporary cache caused initial coverage package-name collisions; moving it outside the workspace resolved them.",
+    "A separate offline cancellation race and runtime dependency advisory were fixed and reverified.",
+    "No hosting domain, TLS certificate, published release digests or external deployment was provisioned.",
+    "Gemini Free Tier operator assertion expires 2026-10-23T10:50:45.989Z; expired or changed eligibility fails closed."
+  ],
+  "separateFixCommits": {
+    "smokeNavigation": "bc7696f",
+    "redisCancellation": "f83150a",
+    "runtimeDependencySecurity": "0ef6268"
+  }
+}
