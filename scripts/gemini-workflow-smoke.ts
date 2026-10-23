@@ -121,6 +121,7 @@ try {
   await expect(review).toBeVisible({ timeout: 30000 });
   report.queueAndUiLatencyMs = performance.now() - start;
   await review.click();
+  await expect(page).toHaveURL(/\/review\/[a-f0-9-]+$/);
   const draftId = page.url().split('/').at(-1);
   const draft = z
     .object({
