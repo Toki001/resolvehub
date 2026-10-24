@@ -36,27 +36,27 @@ Run only one application stack at a time. Stop it with Ctrl+C. `make down` stops
 
 ## Commands
 
-| Command                                                    | Purpose                                                                                    |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| `pnpm install --frozen-lockfile`                           | Reproduce all nine workspace projects from the lockfile                                    |
-| `pnpm dev`                                                 | Build shared dependencies, then watch all applications                                     |
-| `pnpm check`                                               | Format, lint, strict types, canonical contracts/controller validation, unit/contract tests |
-| `pnpm build`                                               | Compile every package/service and production Next.js output                                |
-| `pnpm generate`                                            | Regenerate the REST client and typed GraphQL documents                                     |
-| `pnpm contracts:drift`                                     | Reject changed, deleted or untracked generated output                                      |
-| `pnpm db:seed`                                             | Replace the two reserved synthetic organizations in a local database                       |
-| `pnpm db:bootstrap --database resolvehub_synthetic --seed` | Create a new local database, migrate and seed it                                           |
-| `pnpm db:migrate`                                          | Apply outstanding checksum-verified SQL migrations                                         |
-| `pnpm dashboard:setup`                                     | Migrate and provision an expiring local development workspace membership                   |
-| `pnpm smoke`                                               | Check web/API/worker readiness, process a real BullMQ probe and check duplicate job IDs    |
-| `pnpm test` / `pnpm test:unit`                             | Jest unit and contract tests without Docker                                                |
-| `pnpm typecheck`                                           | Strict workspace and test TypeScript checks                                                |
-| `pnpm test:coverage` / `pnpm test:all`                     | Combined suite, isolated infrastructure and 80% branch gates per critical area             |
-| `pnpm test:integration`                                    | Self-contained NestJS, PostgreSQL/Redis/MinIO Testcontainers and failure injection         |
-| `pnpm test:e2e`                                            | Browser navigation, responsive layout and health-error checks; requires installed Chrome   |
-| `pnpm test:dashboard`                                      | Build and verify authenticated desktop/mobile workflows with disposable infrastructure     |
-| `pnpm infra:check`                                         | Validate Compose without starting containers                                               |
-| `pnpm infra:down`                                          | Stop infrastructure without deleting data                                                  |
+| Command                                                    | Purpose                                                                                               |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `pnpm install --frozen-lockfile`                           | Reproduce all nine workspace projects from the lockfile                                               |
+| `pnpm dev`                                                 | Build shared dependencies, then watch all applications                                                |
+| `pnpm check`                                               | Format, lint, strict types, canonical contracts/controller validation, unit/contract tests            |
+| `pnpm build`                                               | Compile every package/service and production Next.js output                                           |
+| `pnpm generate`                                            | Regenerate the REST client and typed GraphQL documents                                                |
+| `pnpm contracts:drift`                                     | Reject changed, deleted or untracked generated output                                                 |
+| `pnpm db:seed`                                             | Replace the two reserved synthetic organizations in a local database                                  |
+| `pnpm db:bootstrap --database resolvehub_synthetic --seed` | Create a new local database, migrate and seed it                                                      |
+| `pnpm db:migrate`                                          | Apply outstanding checksum-verified SQL migrations                                                    |
+| `pnpm dashboard:setup`                                     | Migrate and provision an expiring local development workspace membership                              |
+| `pnpm smoke`                                               | Check web/API/worker readiness, process a real BullMQ probe and check duplicate job IDs               |
+| `pnpm test` / `pnpm test:unit`                             | Jest unit and contract tests without Docker                                                           |
+| `pnpm typecheck`                                           | Strict workspace and test TypeScript checks                                                           |
+| `pnpm test:coverage` / `pnpm test:all`                     | Combined suite, isolated infrastructure, 95% overall branches and independent 80% critical-area gates |
+| `pnpm test:integration`                                    | Self-contained NestJS, PostgreSQL/Redis/MinIO Testcontainers and failure injection                    |
+| `pnpm test:e2e`                                            | Browser navigation, responsive layout and health-error checks; requires installed Chrome              |
+| `pnpm test:dashboard`                                      | Build and verify authenticated desktop/mobile workflows with disposable infrastructure                |
+| `pnpm infra:check`                                         | Validate Compose without starting containers                                                          |
+| `pnpm infra:down`                                          | Stop infrastructure without deleting data                                                             |
 
 Smoke and browser checks require `make up` and a running `pnpm dev` or `pnpm start` in another terminal. Unit checks need no external services. Integration and coverage commands need Docker; they build the services, create disposable containers, run migrations and clean up automatically. They never load `.env`. The first run builds the pinned MinIO image if missing. See [automated verification](docs/operations/verification.md). Changes to shared packages require restarting `pnpm dev` to rebuild their compiled exports.
 
@@ -90,3 +90,5 @@ Milestone 07 adds read-only PR/merge-queue verification and protected-main/versi
 Milestone 08 adds early OpenTelemetry SDK initialization, private HTTP/GraphQL/SQL/Redis traces, durable request-to-worker context propagation, ingestion/RAG spans, token/cost and queue metrics, and provisioned Grafana/Tempo/Prometheus with tested alerts. Run `pnpm observability:up`, set `OTEL_ENABLED=true` in `.env`, then restart the apps. Grafana runs on http://127.0.0.1:3003; its private generated password is in ignored `.env.observability`. `pnpm observability:check` validates configuration and alert firing; `pnpm observability:verify` checks the running services and authenticated provisioning. `pnpm perf:run` measures isolated k6 drafting and queue saturation with mock providers. See [operations/recovery](docs/operations/observability.md), [performance measurements and limits](docs/performance-report.md), [decision 0009](docs/architecture/decisions/0009-private-operational-telemetry.md) and [milestone 08 verification](docs/verification/milestone-08.md).
 
 The authenticated dashboard follow-up connects ticket creation/status/context/history, private knowledge uploads and revisions, cited draft generation, editing, approval/rejection and audited internal replies. Run `pnpm dashboard:setup` for a local development-only account and `pnpm test:dashboard` for isolated desktop/mobile workflow verification. See [workflow operations](docs/operations/internal-support.md), [decision 0010](docs/architecture/decisions/0010-authenticated-dashboard-and-internal-replies.md) and [verification](docs/verification/internal-support-workflow.md).
+
+Milestone 12 hardens failure-path tests and enforces 95% overall branch coverage within the existing critical-service selection. See the [measured results](docs/verification/milestone-12.md) and [complete branch-by-branch risk audit](docs/verification/milestone-12-coverage-audit.md). No live AI calls are part of these checks.

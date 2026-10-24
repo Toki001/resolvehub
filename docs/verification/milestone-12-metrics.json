@@ -1,0 +1,133 @@
+{
+  "date": "2026-10-24",
+  "baselineCommit": "8042c56",
+  "baseline": {
+    "lines": {
+      "total": 4926,
+      "covered": 4863,
+      "skipped": 0,
+      "pct": 98.72
+    },
+    "statements": {
+      "total": 4926,
+      "covered": 4863,
+      "skipped": 0,
+      "pct": 98.72
+    },
+    "functions": {
+      "total": 249,
+      "covered": 242,
+      "skipped": 0,
+      "pct": 97.18
+    },
+    "branches": {
+      "total": 1317,
+      "covered": 1216,
+      "skipped": 0,
+      "pct": 92.33
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "updated": {
+    "lines": {
+      "total": 4926,
+      "covered": 4895,
+      "skipped": 0,
+      "pct": 99.37
+    },
+    "statements": {
+      "total": 4926,
+      "covered": 4895,
+      "skipped": 0,
+      "pct": 99.37
+    },
+    "functions": {
+      "total": 249,
+      "covered": 243,
+      "skipped": 0,
+      "pct": 97.59
+    },
+    "branches": {
+      "total": 1391,
+      "covered": 1361,
+      "skipped": 0,
+      "pct": 97.84
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "productionFilesMeasured": 40,
+  "criticalAreas": [
+    {
+      "prefix": "packages/ai/src/",
+      "total": 379,
+      "covered": 374,
+      "pct": 98.68
+    },
+    {
+      "prefix": "packages/db/src/",
+      "total": 338,
+      "covered": 333,
+      "pct": 98.52
+    },
+    {
+      "prefix": "services/api/src/auth/",
+      "total": 65,
+      "covered": 65,
+      "pct": 100
+    },
+    {
+      "prefix": "services/api/src/application/",
+      "total": 231,
+      "covered": 228,
+      "pct": 98.7
+    },
+    {
+      "prefix": "services/worker/src/ingestion/",
+      "total": 214,
+      "covered": 208,
+      "pct": 97.2
+    },
+    {
+      "prefix": "services/worker/src/drafting/",
+      "total": 164,
+      "covered": 153,
+      "pct": 93.29
+    }
+  ],
+  "jest": {
+    "tests": 406,
+    "passed": 406,
+    "suites": 38,
+    "passedSuites": 38,
+    "success": true
+  },
+  "browser": {
+    "passed": 16,
+    "seconds": 29.8
+  },
+  "liveGeminiRequests": 0,
+  "productionBehaviorChanges": false,
+  "coverageScopeChanged": false,
+  "overallBranchGate": 95,
+  "independentCriticalAreaGate": 80,
+  "commands": {
+    "pnpm install --frozen-lockfile": "passed",
+    "pnpm check": "passed; formatting/lint/types/contracts and 262 units/contracts",
+    "pnpm test:coverage": "passed; 406 tests / 38 suites, 95% overall and six independent 80% gates",
+    "pnpm test:dashboard": "passed; includes workspace production builds",
+    "pnpm contracts:drift": "passed",
+    "pnpm ci:workflows": "passed",
+    "pnpm docker:build": "passed; web, API and worker local images only",
+    "pnpm docker:smoke": "passed"
+  }
+}

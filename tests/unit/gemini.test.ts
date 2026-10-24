@@ -409,3 +409,128 @@ test('response checkpoint failure is local persistence, never a provider health 
   expect(limits.release).toHaveBeenCalledTimes(1);
   expect(transport).toHaveBeenCalledTimes(1);
 });
+
+test.each([
+  { usageMetadata: { promptTokenCount: 12 }, candidates: [] },
+  {
+    usageMetadata: { promptTokenCount: 12, candidatesTokenCount: 0 },
+    candidates: [{ finishReason: 'STOP', content: { parts: [] } }],
+  },
+])('incomplete provider content never invents usage or evidence: %j', async (fields) => {
+  const limits = budget();
+  const provider = new GeminiDraftProvider(geminiAccess(), geminiDraftConfig(), limits, async () =>
+    Response.json({ modelVersion: 'gemini-3.5-flash-lite', ...fields }),
+  );
+  if (fields.usageMetadata.candidatesTokenCount === undefined) {
+    await expect(provider.generate(input, signal())).rejects.toThrow('GEMINI_INVALID_RESPONSE');
+    expect(limits.succeeded).not.toHaveBeenCalled();
+  } else {
+    expect(await provider.generate(input, signal())).toMatchObject({
+      output: null,
+      outputTokens: 0,
+    });
+  }
+  expect(limits.release).toHaveBeenCalledWith('lease');
+});
+
+test('a successful HTTP status without a response stream fails closed', async () => {
+  const limits = budget();
+  await expect(
+    new GeminiDraftProvider(
+      geminiAccess(),
+      geminiDraftConfig(),
+      limits,
+      async () => new Response(null),
+    ).generate(input, signal()),
+  ).rejects.toThrow('GEMINI_INVALID_RESPONSE');
+  expect(limits.succeeded).not.toHaveBeenCalled();
+  expect(limits.release).toHaveBeenCalledWith('lease');
+});
+
+test('transport exceptions and cooperative timeout rejection remain sanitized and release the lease', async () => {
+  for (const timeout of [false, true]) {
+    const limits = budget();
+    const transport = jest.fn<typeof fetch>().mockImplementation(async (_url, init) => {
+      if (timeout)
+        await new Promise<void>((resolve) =>
+          init?.signal?.addEventListener('abort', () => resolve(), { once: true }),
+        );
+      throw new Error('private transport diagnostic');
+    });
+    await expect(
+      new GeminiDraftProvider(
+        geminiAccess(),
+        { ...geminiDraftConfig(), timeoutMs: 100 },
+        limits,
+        transport,
+      ).generate(input, signal()),
+    ).rejects.toMatchObject({
+      category: timeout ? 'GEMINI_TIMEOUT' : 'GEMINI_UNAVAILABLE',
+      transient: true,
+    });
+    expect(limits.failed).toHaveBeenCalledWith(
+      expect.objectContaining({ category: timeout ? 'GEMINI_TIMEOUT' : 'GEMINI_UNAVAILABLE' }),
+    );
+    expect(limits.release).toHaveBeenCalledTimes(1);
+    expect(transport).toHaveBeenCalledTimes(1);
+  }
+});
+
+test('cancellation while budget admission completes never waits for a provider ignoring abort', async () => {
+  const controller = new AbortController(),
+    limits = budget();
+  limits.acquire.mockImplementation(async () => {
+    controller.abort();
+    return 'lease';
+  });
+  const transport = jest
+    .fn<typeof fetch>()
+    .mockImplementation(async () => new Promise(() => undefined));
+  await expect(
+    new GeminiDraftProvider(geminiAccess(), geminiDraftConfig(), limits, transport).generate(
+      input,
+      controller.signal,
+    ),
+  ).rejects.toThrow('GEMINI_TIMEOUT');
+  expect(limits.release).toHaveBeenCalledWith('lease');
+});
+
+test('configured conservative minute and concurrency limits are parsed, never enlarged implicitly', () => {
+  expect(
+    parseGeminiConfig({ GEMINI_REQUESTS_PER_MINUTE: '1', GEMINI_CONCURRENCY: '1' }),
+  ).toMatchObject({ requestsPerMinute: 1, concurrency: 1, requestsPerDay: 10 });
+  for (const env of [{ GEMINI_REQUESTS_PER_MINUTE: '6' }, { GEMINI_CONCURRENCY: '3' }])
+    expect(() => parseGeminiConfig(env)).toThrow('Invalid Gemini configuration');
+});
+
+test.each([
+  [400, 'GEMINI_INVALID_REQUEST'],
+  [404, 'GEMINI_MODEL_UNAVAILABLE'],
+  [429, 'GEMINI_QUOTA_EXHAUSTED'],
+] as const)(
+  'HTTP %i remains classified when discarding the provider error body fails',
+  async (status, category) => {
+    const limits = budget(),
+      transport = jest.fn<typeof fetch>().mockImplementation(
+        async () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              cancel: async () => {
+                throw new Error('private broken response stream');
+              },
+            }),
+            { status, headers: { 'Retry-After': '2' } },
+          ),
+      );
+    await expect(
+      new GeminiDraftProvider(geminiAccess(), geminiDraftConfig(), limits, transport).generate(
+        input,
+        signal(),
+      ),
+    ).rejects.toMatchObject({ category, retryAfterMs: 2000, transient: false });
+    expect(limits.failed).toHaveBeenCalledWith(expect.objectContaining({ category }));
+    expect(limits.succeeded).not.toHaveBeenCalled();
+    expect(limits.release).toHaveBeenCalledWith('lease');
+    expect(transport).toHaveBeenCalledTimes(1);
+  },
+);

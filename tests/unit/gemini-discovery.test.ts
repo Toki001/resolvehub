@@ -34,15 +34,19 @@ test('official SDK lists canonical models and generation methods without inferri
   expect(transport.mock.calls[0]?.[1]).toMatchObject({ method: 'GET', redirect: 'error' });
 });
 
-test('discovery is bounded to three metadata pages and never follows an infinite page token', async () => {
-  const transport = jest
-    .fn<typeof fetch>()
-    .mockImplementation(async () => Response.json({ models: [], nextPageToken: 'same-token' }));
+test('discovery is bounded to three metadata pages even when each page has a fresh continuation token', async () => {
+  let page = 0;
+  const transport = jest.fn<typeof fetch>().mockImplementation(async () => {
+    page++;
+    return Response.json({
+      models: [{ name: `models/unrelated-${page}` }],
+      nextPageToken: `page-${page + 1}`,
+    });
+  });
   await expect(discoverGeminiModels(geminiAccess(), transport)).rejects.toThrow(
     'GEMINI_DISCOVERY_',
   );
-  expect(transport.mock.calls.length).toBeGreaterThan(0);
-  expect(transport.mock.calls.length).toBeLessThanOrEqual(3);
+  expect(transport).toHaveBeenCalledTimes(3);
 });
 
 test('metadata discovery still requires current key-bound account verification', async () => {
@@ -87,6 +91,14 @@ test('oversized model metadata is bounded and rejected', async () => {
   const transport = jest.fn<typeof fetch>().mockResolvedValue(new Response('x'.repeat(1048577)));
   await expect(discoverGeminiModels(geminiAccess(), transport)).rejects.toThrow(
     'GEMINI_DISCOVERY_',
+  );
+  expect(transport).toHaveBeenCalledTimes(1);
+});
+
+test('a metadata success without a body is unavailable rather than an empty available-model list', async () => {
+  const transport = jest.fn<typeof fetch>().mockResolvedValue(new Response(null));
+  await expect(discoverGeminiModels(geminiAccess(), transport)).rejects.toThrow(
+    'GEMINI_DISCOVERY_UNAVAILABLE',
   );
   expect(transport).toHaveBeenCalledTimes(1);
 });

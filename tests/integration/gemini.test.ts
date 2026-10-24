@@ -497,8 +497,12 @@ test('Redis atomically bounds shared concurrency and keeps rolling daily/minute 
   await b.release(next);
   await expect(a.acquire(signal())).rejects.toThrow('GEMINI_DAILY_LIMIT');
   expect((await b.status()).reasonCode).toBe('GEMINI_DAILY_LIMIT');
+  // Admission uses Redis TIME. Use that clock and an explicit expiry margin,
+  // rather than assuming the Node and Redis clocks agree within 1 ms.
+  const [seconds, microseconds] = await redis.time();
+  const redisNow = Number(seconds) * 1000 + Math.floor(Number(microseconds) / 1000);
   for (const entry of await redis.zrange(requests, 0, -1))
-    await redis.zadd(requests, Date.now() - 86400001, entry);
+    await redis.zadd(requests, redisNow - 86400000 - 60000, entry);
   await b.release(await a.acquire(signal()));
 });
 test('concurrency admission does not multiply with replicas and release recovers capacity', async () => {
@@ -883,4 +887,70 @@ test('sanitized diagnostics retain request/job/trace correlation and logging fai
   ]);
   expect(wire.requests).toHaveLength(1);
   expect(schema('Job', await store.tenant(org).job(job.id)).status).toBe('succeeded');
+});
+
+test('unverified budget cannot admit a request and minute saturation is visible before daily exhaustion', async () => {
+  const unverified = new RedisGeminiBudget(
+    redis,
+    { ...access(), billingDisabled: false },
+    prefix(),
+  );
+  await expect(unverified.acquire(signal())).rejects.toThrow('GEMINI_FREE_TIER_UNVERIFIED');
+  const budget = new RedisGeminiBudget(redis, { ...access(), requestsPerMinute: 1 }, prefix());
+  const lease = await budget.acquire(signal());
+  await budget.release(lease);
+  expect(await budget.status()).toMatchObject({
+    canGenerate: false,
+    reasonCode: 'GEMINI_MINUTE_LIMIT',
+    retryAfterSeconds: 60,
+  });
+});
+
+test('status rejects a model-mismatched heartbeat and admission reports safe dependency errors without a retry hint', async () => {
+  const budget = new RedisGeminiBudget(redis, access(), prefix());
+  await budget.succeeded(1, 1);
+  const healthy = await budget.status();
+  await redis.set(
+    `${apiPrefix}:ai:status`,
+    JSON.stringify({
+      status: { ...healthy, model: 'gemini-2.5-flash-lite' },
+      syntheticOrganizations: [org],
+    }),
+  );
+  expect(await ai.status(org)).toMatchObject({ mode: 'unavailable', canGenerate: false });
+  await expect(ai.requireAvailable(org)).rejects.toMatchObject({
+    statusCode: 503,
+    code: 'GEMINI_UNAVAILABLE',
+    details: undefined,
+  });
+  await redis.set(
+    `${apiPrefix}:ai:status`,
+    JSON.stringify({
+      status: {
+        ...healthy,
+        mode: 'unavailable',
+        canGenerate: false,
+        reasonCode: null,
+        retryAfterSeconds: null,
+      },
+      syntheticOrganizations: [org],
+    }),
+  );
+  await expect(ai.requireAvailable(org)).rejects.toMatchObject({
+    statusCode: 503,
+    code: 'GEMINI_UNAVAILABLE',
+    details: undefined,
+  });
+});
+
+test('corrupt Redis budget state fails closed instead of reporting available capacity', async () => {
+  const p = prefix(),
+    settings = access(),
+    budget = new RedisGeminiBudget(redis, settings, p);
+  const key = `${p}:gemini:${createHash('sha256')
+    .update(settings.projectId ?? '')
+    .digest('hex')}:blocked`;
+  await redis.hset(key, 'corrupt', 'synthetic');
+  await expect(budget.status()).rejects.toThrow('Provider status unavailable');
+  await expect(budget.acquire(signal())).rejects.toThrow('GEMINI_UNAVAILABLE');
 });

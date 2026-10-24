@@ -5,6 +5,8 @@ import { getTableConfig } from 'drizzle-orm/pg-core';
 import {
   ContractStore,
   createDatabase,
+  DraftSession,
+  IngestionSession,
   KnowledgeRepository,
   migrate,
   schema,
@@ -445,3 +447,258 @@ test('ticket soft deletion hides its messages and drafts, and mutable timestamps
   );
   expect(lifecycle.rows[0]).toEqual({ touched: true, deleted: true });
 });
+
+test('knowledge deletion and publication refuse forged actors, foreign documents and missing versions', async () => {
+  const doc = fixtureId('doc:0:3'),
+    version = fixtureId('version:0:3:3');
+  for (const operation of [
+    () => repository.publish(doc, version, { ...actor, organizationId: orgB }),
+    () => repository.deleteVersion(doc, version, { ...actor, organizationId: orgB }),
+    () => repository.deleteVersion(fixtureId('doc:1:3'), version, actor),
+    () => repository.deleteVersion(doc, randomUUID(), actor),
+  ])
+    await expect(operation()).rejects.toThrow('not_found');
+  const before = (
+    await pool.query('SELECT active_version_id FROM knowledge_documents WHERE id=$1', [doc])
+  ).rows[0];
+  const old = fixtureId('version:0:3:1');
+  await pool.query("UPDATE document_versions SET status='processing' WHERE id=$1", [old]);
+  await expect(repository.publish(doc, old, actor)).rejects.toThrow('state');
+  expect(
+    (await pool.query('SELECT active_version_id FROM knowledge_documents WHERE id=$1', [doc]))
+      .rows[0],
+  ).toEqual(before);
+  await repository.deleteVersion(doc, version, actor);
+  await repository.deleteVersion(doc, version, actor);
+  expect(
+    (
+      await pool.query(
+        "SELECT id FROM audit_events WHERE resource_id=$1 AND action='document.version_deleted'",
+        [version],
+      )
+    ).rowCount,
+  ).toBe(1);
+  expect(await repository.nearest(syntheticEmbedding('policy'), 100)).not.toEqual(
+    expect.arrayContaining([expect.objectContaining({ versionId: version })]),
+  );
+});
+
+test('punctuation-only hybrid queries retain tenant filtering without lexical terms', async () => {
+  const rows = await repository.search('?!', syntheticEmbedding('?!'), 5);
+  expect(rows).toHaveLength(5);
+  expect(rows.every((row) => row.organizationId === orgA && row.lexicalRank === 0)).toBe(true);
+});
+
+test('stable continuation pages for documents, search, reviews, jobs and messages never repeat rows or cross tenants', async () => {
+  const repo = store.tenant(orgA),
+    snapshot = new Date('2030-01-01').toISOString();
+  const readRow = (value: unknown) => {
+    if (
+      typeof value !== 'object' ||
+      value === null ||
+      !('createdAt' in value) ||
+      typeof value.createdAt !== 'string'
+    )
+      throw new Error('Missing timestamp');
+    const id = 'id' in value ? value.id : 'chunkId' in value ? value.chunkId : undefined;
+    if (typeof id !== 'string') throw new Error('Missing row identifier');
+    return { id, createdAt: value.createdAt };
+  };
+  const readers = [
+    (page: { first: number; snapshot: string; last?: { id: string; createdAt: string } }) =>
+      repo.documents(page),
+    (page: { first: number; snapshot: string; last?: { id: string; createdAt: string } }) =>
+      repo.search('the', page),
+    (page: { first: number; snapshot: string; last?: { id: string; createdAt: string } }) =>
+      repo.reviewQueue(page, 'pending'),
+    (page: { first: number; snapshot: string; last?: { id: string; createdAt: string } }) =>
+      repo.backgroundJobs(page),
+    (page: { first: number; snapshot: string; last?: { id: string; createdAt: string } }) =>
+      repo.messageHistory(fixtureId('ticket:0:0'), page),
+  ];
+  // Supply enough deterministic rows even where the seed intentionally has no jobs.
+  for (let i = 0; i < 3; i++)
+    await repo.createJob(
+      'draft_response',
+      fixtureId('ticket:0:0'),
+      { ticketId: fixtureId('ticket:0:0') },
+      actor.requestId,
+      null,
+      actor.actorId,
+    );
+  for (const read of readers) {
+    const first = await read({ first: 1, snapshot });
+    expect(first.length).toBeGreaterThanOrEqual(2);
+    const last = readRow(first[0]);
+    const second = await read({ first: 1, snapshot, last });
+    expect(second.length).toBeGreaterThanOrEqual(1);
+    expect(second.map(readRow).map((row) => row.id)).not.toContain(last.id);
+  }
+  expect(
+    await store.tenant(orgB).messageHistory(fixtureId('ticket:0:0'), { first: 2, snapshot }),
+  ).toEqual([]);
+});
+
+test('unapproved replies and mismatched audit actors fail without persisting a message or idempotency receipt', async () => {
+  const key = randomUUID(),
+    draft = fixtureId('draft:0:5');
+  const messages = () =>
+    pool.query('SELECT id FROM ticket_messages WHERE source_draft_id=$1', [draft]);
+  const before = (await messages()).rowCount;
+  await expect(
+    store.mutate(actor, key, 'approval-guard', '', async (repo) => {
+      await repo.recordApprovedReply(draft);
+      return { status: 200, body: null };
+    }),
+  ).rejects.toThrow('state');
+  expect((await messages()).rowCount).toBe(before);
+  expect(
+    (
+      await pool.query('SELECT key FROM idempotency_records WHERE organization_id=$1 AND key=$2', [
+        orgA,
+        key,
+      ])
+    ).rowCount,
+  ).toBe(0);
+  await expect(
+    store.tenant(orgA).audit({ ...actor, organizationId: orgB }, 'forged', draft),
+  ).rejects.toThrow('Audit context mismatch');
+});
+
+test('dead-letter replay rejects missing, foreign, unfinished, ineligible and stale-version jobs transactionally', async () => {
+  const doc = fixtureId('doc:0:4'),
+    version = fixtureId('version:0:4:3');
+  const repo = store.tenant(orgA);
+  await expect(repo.replay(randomUUID(), actor.requestId, actor.actorId)).rejects.toThrow(
+    'not_found',
+  );
+  const pending = await repo.createJob(
+    'draft_response',
+    fixtureId('ticket:0:0'),
+    { ticketId: fixtureId('ticket:0:0') },
+    actor.requestId,
+    null,
+    actor.actorId,
+  );
+  await expect(store.tenant(orgB).replay(pending, actor.requestId, actor.actorId)).rejects.toThrow(
+    'not_found',
+  );
+  await expect(repo.replay(pending, actor.requestId, actor.actorId)).rejects.toThrow('state');
+  const deny = async (kind: string, withFailure: boolean, replayEligible: boolean) => {
+    const id = await repo.createJob(
+      kind,
+      doc,
+      kind === 'document_ingestion'
+        ? { documentId: doc, versionId: version }
+        : { ticketId: fixtureId('ticket:0:0') },
+      actor.requestId,
+      null,
+      actor.actorId,
+    );
+    await pool.query("UPDATE job_runs SET status='failed' WHERE id=$1", [id]);
+    if (withFailure)
+      await pool.query(
+        "INSERT INTO failed_jobs(id,organization_id,job_id,error_category,summary,input_fingerprint,request_id,replay_eligible) VALUES(gen_random_uuid(),$1,$2,'RESOURCE_UNAVAILABLE','Synthetic guard fixture',$3,$4,$5)",
+        [orgA, id, 'a'.repeat(64), actor.requestId, replayEligible],
+      );
+    const key = randomUUID();
+    await expect(
+      store.mutate(actor, key, 'replay-guard', '', async (tx) => ({
+        status: 202,
+        body: { id: await tx.replay(id, actor.requestId, actor.actorId) },
+      })),
+    ).rejects.toThrow('state');
+    expect((await pool.query('SELECT id FROM job_runs WHERE replay_of=$1', [id])).rowCount).toBe(0);
+    expect(
+      (
+        await pool.query(
+          'SELECT key FROM idempotency_records WHERE organization_id=$1 AND key=$2',
+          [orgA, key],
+        )
+      ).rowCount,
+    ).toBe(0);
+  };
+  await deny('draft_response', true, false);
+  await deny('document_ingestion', false, false);
+  await deny('document_ingestion', true, true); // The version is indexed, never replayable as a failed ingestion.
+});
+
+test.each(['draft', 'ingestion'] as const)(
+  '%s sessions discard terminated connections and open a fresh tenant-clean connection',
+  async (kind) => {
+    const isolated = createDatabase(url.toString(), { maxConnections: 1 }).pool;
+    const repo = store.tenant(orgA);
+    const id = await repo.createJob(
+      kind === 'draft' ? 'draft_response' : 'document_ingestion',
+      fixtureId('ticket:0:0'),
+      kind === 'draft'
+        ? { ticketId: fixtureId('ticket:0:0') }
+        : { documentId: fixtureId('doc:0:0'), versionId: fixtureId('version:0:0:3') },
+      actor.requestId,
+      null,
+      actor.actorId,
+    );
+    try {
+      const previous = (await isolated.query<{ pid: number }>('SELECT pg_backend_pid() pid'))
+        .rows[0]?.pid;
+      expect(previous).toEqual(expect.any(Number));
+      const session =
+        kind === 'draft'
+          ? await DraftSession.open(isolated, orgA, id)
+          : await IngestionSession.open(isolated, orgA, id);
+      if (!session) throw new Error('Missing fixture session');
+      try {
+        expect(
+          (await pool.query('SELECT pg_terminate_backend($1) terminated', [previous])).rows[0]
+            ?.terminated,
+        ).toBe(true);
+      } finally {
+        await session.close();
+      }
+      const next = (
+        await isolated.query<{ pid: number; tenant: string | null }>(
+          "SELECT pg_backend_pid() pid,nullif(current_setting('resolvehub.organization_id',true),'') tenant",
+        )
+      ).rows[0];
+      expect(next?.pid).not.toBe(previous);
+      expect(next?.tenant).toBeNull();
+    } finally {
+      await isolated.end();
+    }
+  },
+);
+
+test.each(['draft', 'ingestion'] as const)(
+  '%s session setup errors discard connections instead of leaking locks or tenant context',
+  async (kind) => {
+    const empty = `rh_empty_${randomUUID().replaceAll('-', '')}`,
+      failedUrl = new URL(url.toString());
+    await pool.query(`CREATE SCHEMA "${empty}"`);
+    failedUrl.searchParams.set('options', `-c search_path=${empty}`);
+    const isolated = createDatabase(failedUrl.href, { maxConnections: 1 }).pool;
+    try {
+      const open =
+        kind === 'draft'
+          ? DraftSession.open(isolated, orgA, randomUUID())
+          : IngestionSession.open(isolated, orgA, randomUUID());
+      await expect(open).rejects.toMatchObject({ code: '42P01' });
+      expect(
+        (
+          await isolated.query(
+            "SELECT nullif(current_setting('resolvehub.organization_id',true),'') tenant",
+          )
+        ).rows[0]?.tenant,
+      ).toBeNull();
+      expect(
+        (
+          await isolated.query(
+            "SELECT count(*)::int n FROM pg_locks WHERE pid=pg_backend_pid() AND locktype='advisory'",
+          )
+        ).rows[0]?.n,
+      ).toBe(0);
+    } finally {
+      await isolated.end();
+      await pool.query(`DROP SCHEMA "${empty}"`);
+    }
+  },
+);

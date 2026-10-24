@@ -1093,3 +1093,180 @@ test('real ingestion runtime dispatches durable records, becomes ready, and clos
   }
   expect(runtime.ready()).toBe(false);
 });
+
+test('future claims and already-cancelled workers do not download or publish', async () => {
+  const input = await createJob('Synthetic future claim.'),
+    fetch = jest.spyOn(storage, 'fetch');
+  try {
+    const process = ingestionProcessor({
+      pool,
+      storage,
+      provider: new SyntheticEmbeddingProvider(),
+      limiter: { acquire: async () => undefined },
+      pdf,
+      signal: AbortSignal.abort(),
+      retryBaseMs: 1,
+    });
+    await pool.query("UPDATE job_runs SET available_at=now()+interval '1 hour' WHERE id=$1", [
+      input.jobId,
+    ]);
+    await expect(process(input.data)).resolves.toBeUndefined();
+    expect((await job(input.jobId)).attempts).toBe(0);
+    await pool.query('UPDATE job_runs SET available_at=now() WHERE id=$1', [input.jobId]);
+    await expect(process(input.data)).rejects.toThrow('Ingestion attempt requires retry');
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await active(input.documentId)).toBeNull();
+  } finally {
+    fetch.mockRestore();
+  }
+});
+
+test('cancellation after embedding commits retains staged work but never publishes it', async () => {
+  const input = await createJob('Synthetic interruption before publication.'),
+    controller = new AbortController();
+  const save = IngestionSession.prototype.saveEmbeddings;
+  // Inject cancellation at the real committed checkpoint, without replacing its DB work.
+  const checkpoint = jest
+    .spyOn(IngestionSession.prototype, 'saveEmbeddings')
+    .mockImplementation(async function (this: IngestionSession, rows) {
+      await save.call(this, rows);
+      controller.abort();
+    });
+  try {
+    const process = ingestionProcessor({
+      pool,
+      storage,
+      pdf,
+      signal: controller.signal,
+      retryBaseMs: 1,
+      limiter: { acquire: async () => undefined },
+      provider: new SyntheticEmbeddingProvider(),
+    });
+    await expect(process(input.data)).rejects.toThrow('Ingestion attempt requires retry');
+    expect(checkpoint).toHaveBeenCalledTimes(1);
+    expect(await active(input.documentId)).toBeNull();
+    expect((await job(input.jobId)).reasonCode).toBe('WORKER_INTERRUPTED');
+    expect(
+      (
+        await pool.query(
+          'SELECT id FROM knowledge_chunks WHERE version_id=$1 AND embedding IS NOT NULL',
+          [input.versionId],
+        )
+      ).rowCount,
+    ).toBeGreaterThan(0);
+  } finally {
+    checkpoint.mockRestore();
+  }
+});
+
+test('pre-cancelled embedding admission performs no Redis command', async () => {
+  const redis = await readyRedis(),
+    evaluate = jest.spyOn(redis, 'eval');
+  try {
+    await expect(
+      new ProviderLimiter(redis, `cancelled-${randomUUID()}`, 1).acquire(AbortSignal.abort()),
+    ).rejects.toThrow('WORKER_INTERRUPTED');
+    expect(evaluate).not.toHaveBeenCalled();
+  } finally {
+    evaluate.mockRestore();
+    redis.disconnect();
+  }
+});
+
+test('missing authoritative versions cannot be read after a session opens', async () => {
+  const input = await createJob('Synthetic deletion before read.');
+  const session = await IngestionSession.open(pool, organizationId, input.jobId);
+  if (!session) throw new Error('Missing fixture session');
+  try {
+    await pool.query('UPDATE document_versions SET deleted_at=now() WHERE id=$1', [
+      input.versionId,
+    ]);
+    expect(await session.source()).toBeUndefined();
+  } finally {
+    await session.close();
+  }
+});
+
+test('a corrupt PDF with a valid signature fails in the real parser and is never published', async () => {
+  const input = await createJob('', {
+    bytes: Buffer.from('%PDF-1.7\nnot a PDF structure\n%%EOF'),
+    mime: 'application/pdf',
+  });
+  const process = ingestionProcessor({
+    pool,
+    storage,
+    pdf,
+    limiter: { acquire: async () => undefined },
+    provider: new SyntheticEmbeddingProvider(),
+  });
+  await expect(process(input.data)).rejects.toThrow('INVALID_CONTENT');
+  expect(await active(input.documentId)).toBeNull();
+  expect(
+    schema('FailedJob', await store.tenant(organizationId).failure(input.jobId)),
+  ).toMatchObject({
+    replayEligible: false,
+    attemptHistory: [expect.objectContaining({ outcome: 'permanent' })],
+  });
+});
+
+test('an older queued revision cannot replace a newer already-published index', async () => {
+  const older = await createJob('Synthetic older replacement must never win.'),
+    newer = await createJob('Synthetic newest policy remains current.', {
+      documentId: older.documentId,
+    });
+  const process = ingestionProcessor({
+    pool,
+    storage,
+    pdf,
+    limiter: { acquire: async () => undefined },
+    provider: new SyntheticEmbeddingProvider(),
+  });
+  await process(newer.data);
+  expect(await active(older.documentId)).toBe(newer.versionId);
+  await expect(process(older.data)).rejects.toThrow('RESOURCE_SUPERSEDED');
+  expect(await active(older.documentId)).toBe(newer.versionId);
+  expect((await job(older.jobId)).attempts).toBe(1);
+  expect(
+    schema('FailedJob', await store.tenant(organizationId).failure(older.jobId)),
+  ).toMatchObject({ errorCategory: 'RESOURCE_SUPERSEDED', replayEligible: false });
+  const rows = await store
+    .tenant(organizationId)
+    .search('Synthetic newest policy', { first: 100, snapshot: new Date().toISOString() });
+  expect(rows).toContainEqual(expect.objectContaining({ versionId: newer.versionId }));
+  expect(rows).not.toContainEqual(expect.objectContaining({ versionId: older.versionId }));
+});
+
+test('handoff acknowledgement rollback preserves accepted work and deduplicates its Redis job on recovery', async () => {
+  const input = await createJob('Synthetic queue acknowledgement failure.'),
+    redis = await readyRedis();
+  const queue = ingestionQueue(redis, `ack-${randomUUID()}`);
+  queue.on('error', () => undefined);
+  const queueId = `ingest-${organizationId}-${input.jobId}`;
+  try {
+    await pool.query(
+      `CREATE FUNCTION reject_dispatch_ack() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.id='${input.jobId}'::uuid AND NEW.dispatch_after<>OLD.dispatch_after THEN RAISE EXCEPTION 'private handoff failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_dispatch_ack BEFORE UPDATE ON job_runs FOR EACH ROW EXECUTE FUNCTION reject_dispatch_ack()`,
+    );
+    await expect(dispatchIngestions(pool, queue)).rejects.toThrow('private handoff failure');
+    expect(await job(input.jobId)).toMatchObject({ status: 'accepted', attempts: 0 });
+    expect(await queue.getJob(queueId)).toBeDefined();
+    await pool.query(
+      'DROP TRIGGER reject_dispatch_ack ON job_runs; DROP FUNCTION reject_dispatch_ack()',
+    );
+    await dispatchIngestions(pool, queue);
+    expect((await queue.getJobs(['waiting'])).filter((entry) => entry.id === queueId)).toHaveLength(
+      1,
+    );
+    const row = (
+      await pool.query('SELECT dispatch_after>now() acknowledged FROM job_runs WHERE id=$1', [
+        input.jobId,
+      ])
+    ).rows[0];
+    expect(row?.acknowledged).toBe(true);
+  } finally {
+    await pool.query(
+      'DROP TRIGGER IF EXISTS reject_dispatch_ack ON job_runs; DROP FUNCTION IF EXISTS reject_dispatch_ack()',
+    );
+    await queue.close();
+    redis.disconnect();
+  }
+});

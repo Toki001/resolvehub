@@ -63,3 +63,22 @@ test('binary files cannot masquerade as plain text', async () => {
     await extractText(Buffer.from('# Policy\r\nUseful text'), 'text/markdown', pdf, signal),
   ).toBe('# Policy\nUseful text');
 });
+
+test('unsupported media types are permanent failures before extraction', () => {
+  expect(() =>
+    extractText(
+      Buffer.from('synthetic'),
+      'application/zip',
+      async () => 'unused',
+      new AbortController().signal,
+    ),
+  ).toThrow('INVALID_TYPE');
+});
+
+test('pre-cancelled PDF extraction rejects before starting a parser thread', async () => {
+  const { pdfExtractor } = await import('../../services/worker/src/ingestion/extract.js');
+  const extract = pdfExtractor(new URL('file:///synthetic-unused-pdf-parser.js'));
+  await expect(extract(Buffer.from('%PDF-1.7\n'), AbortSignal.abort())).rejects.toThrow(
+    'EXTRACTION_TIMEOUT',
+  );
+});

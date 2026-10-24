@@ -736,3 +736,45 @@ test('dashboard summary and draft response operations resolve from stored tenant
     z.object({ draft: z.object({ status: z.string() }) }).parse(result.body.data).draft.status,
   ).toBe('approved');
 });
+
+test('omitted and empty ticket filters remain valid tenant-scoped GraphQL queries', async () => {
+  for (const filter of [undefined, {}, { status: 'open' }]) {
+    const result = await graph(tokenA, print(TicketsDocument), {
+      first: 100,
+      ...(filter ? { filter } : {}),
+    });
+    expect(result.body.errors).toBeUndefined();
+    const page = z
+      .object({
+        tickets: z.object({
+          edges: z.array(z.object({ node: z.object({ id: z.uuid(), status: z.string() }) })),
+        }),
+      })
+      .parse(result.body.data);
+    expect(page.tickets.edges.length).toBeGreaterThan(0);
+    expect(page.tickets.edges.map((edge) => edge.node.id)).not.toContain(ticketB);
+    if (filter?.status)
+      expect(page.tickets.edges.every((edge) => edge.node.status === filter.status)).toBe(true);
+  }
+});
+
+test('stored timestamps outside the transport contract produce a sanitized server error', async () => {
+  const id = randomUUID();
+  await pool.query(
+    "INSERT INTO knowledge_documents(id,organization_id,title,status,created_at) VALUES($1,$2,'Synthetic invalid historical timestamp','queued','0001-01-01 BC')",
+    [id, organizationA],
+  );
+  try {
+    const result = await graph(tokenA, print(KnowledgeDocumentsDocument), { first: 100 });
+    expect(result.body.errors?.[0]?.extensions).toMatchObject({
+      code: 'INTERNAL_ERROR',
+      httpStatus: 500,
+      message: 'Request could not be completed.',
+    });
+    expect(JSON.stringify(result.body.errors)).not.toContain(
+      'Synthetic invalid historical timestamp',
+    );
+  } finally {
+    await pool.query('DELETE FROM knowledge_documents WHERE id=$1', [id]);
+  }
+});

@@ -345,3 +345,62 @@ test('a transient failure leaves an explicit incomplete-usage flag on the recove
     accountedAttempts: 1,
   });
 });
+
+test('checkpoint database failure is categorized as persistence and never calls generation', async () => {
+  const input = await createJob(),
+    run = jest.fn<typeof pipeline.run>();
+  try {
+    await pool.query(
+      `CREATE FUNCTION reject_draft_checkpoint() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.job_id='${input.id}'::uuid AND NEW.stage='source' THEN RAISE EXCEPTION 'private checkpoint fault'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_draft_checkpoint BEFORE UPDATE ON job_attempts FOR EACH ROW EXECUTE FUNCTION reject_draft_checkpoint()`,
+    );
+    await expect(
+      draftProcessor({ pool, pipeline: { run }, maxAttempts: 1 })(input.data),
+    ).rejects.toThrow('DRAFT_PERSISTENCE_FAILED');
+    expect(run).not.toHaveBeenCalled();
+    expect(schema('FailedJob', await store.tenant(org).failure(input.id))).toMatchObject({
+      errorCategory: 'DRAFT_PERSISTENCE_FAILED',
+      attemptHistory: [expect.objectContaining({ stage: 'persistence', outcome: 'permanent' })],
+    });
+    expect(await store.tenant(org).draft(input.id)).toBeUndefined();
+  } finally {
+    await pool.query(
+      'DROP TRIGGER IF EXISTS reject_draft_checkpoint ON job_attempts; DROP FUNCTION IF EXISTS reject_draft_checkpoint()',
+    );
+  }
+});
+
+test('unexpected generation error becomes a worker failure with durable diagnostic history', async () => {
+  const input = await createJob();
+  await expect(
+    draftProcessor({
+      pool,
+      pipeline: {
+        run: async () => {
+          throw new Error('private adapter fault');
+        },
+      },
+      maxAttempts: 1,
+    })(input.data),
+  ).rejects.toThrow('DRAFT_WORKER_FAILED');
+  expect(schema('FailedJob', await store.tenant(org).failure(input.id))).toMatchObject({
+    errorCategory: 'DRAFT_WORKER_FAILED',
+    attemptHistory: [expect.objectContaining({ stage: 'source' })],
+  });
+  expect(await store.tenant(org).draft(input.id)).toBeUndefined();
+});
+
+test('session failure without a stage preserves the prior checkpoint for recovery', async () => {
+  const input = await createJob(),
+    session = await DraftSession.open(pool, org, input.id);
+  if (!session) throw new Error('Missing fixture session');
+  try {
+    expect(await session.claim()).toBe('run');
+    await session.checkpoint('retrieval');
+    expect(await session.fail('WORKER_INTERRUPTED', false, 1)).toBe(false);
+    expect(
+      (await pool.query('SELECT stage,outcome FROM job_attempts WHERE job_id=$1', [input.id])).rows,
+    ).toEqual([{ stage: 'retrieval', outcome: 'transient' }]);
+  } finally {
+    await session.close();
+  }
+});

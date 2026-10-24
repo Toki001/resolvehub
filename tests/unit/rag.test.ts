@@ -307,3 +307,76 @@ test('golden data is deterministic, exactly balanced, synthetic, and not importe
       .map((line) => JSON.parse(line)),
   ).toEqual(fixtures.corpus);
 });
+
+test('irrelevant quotations in otherwise relevant evidence cannot support an answer', async () => {
+  const text = `${row.text} Shipping takes 3 days.`;
+  const generate = async (): Promise<GenerationResult> => ({
+    output: {
+      kind: 'answer',
+      claims: [{ chunkId: chunk, text: 'Shipping takes 3 days.', quote: 'Shipping takes 3 days.' }],
+    },
+    inputTokens: 20,
+    outputTokens: 10,
+    tokenCountSource: 'mock_estimate',
+  });
+  const result = await pipeline({ rows: [{ ...row, text }], generate }).run({
+    organizationId: org,
+    question,
+  });
+  expect(result.generation.abstentionReason).toBe('invalid_citations');
+  expect(result.citations).toEqual([]);
+});
+
+test('context checkpoint failure is classified and never invokes generation', async () => {
+  const generate = jest.fn<GenerationProvider['generate']>();
+  await expect(
+    pipeline({ generate }).run({ organizationId: org, question }, undefined, async (stage) => {
+      if (stage === 'context') throw new Error('private checkpoint failure');
+    }),
+  ).rejects.toMatchObject({ category: 'RAG_CONTEXT_FAILED', stage: 'context', transient: false });
+  expect(generate).not.toHaveBeenCalled();
+});
+
+test('provider failure remains distinct from retrieval and context failures', async () => {
+  const failure = new Error('Synthetic generation outage');
+  await expect(
+    pipeline({
+      generate: async () => {
+        throw failure;
+      },
+    }).run({ organizationId: org, question }),
+  ).rejects.toBe(failure);
+});
+
+test('equal-score evidence uses stable chunk ordering; punctuation has no retrieval terms', async () => {
+  const other = { ...row, chunkId: row.documentId };
+  const a = await provider.generate({ ...input, evidence: [other, row] }, signal);
+  const b = await provider.generate({ ...input, evidence: [row, other] }, signal);
+  expect(a.output).toEqual(b.output);
+  expect(a.output).toMatchObject({ claims: [{ chunkId: chunk }] });
+  expect(terms('?!🧪')).toEqual([]);
+  expect(() =>
+    parseDraftConfig({
+      DRAFT_PROVIDER: 'ollama',
+      DRAFT_MODEL: 'resolvehub-extractive-mock-v1',
+      DRAFT_PRICE_DATE: '2026-10-22',
+      DRAFT_INPUT_USD_PER_MILLION: '0',
+      DRAFT_OUTPUT_USD_PER_MILLION: '0',
+    }),
+  ).toThrow('Invalid draft configuration');
+});
+
+test('local operator pricing is reported explicitly even when the pipeline abstains', async () => {
+  const local = { ...config, provider: 'ollama' as const, model: 'synthetic-local-model' };
+  const generate = jest.fn<GenerationProvider['generate']>();
+  const rag = new DraftingPipeline(
+    new SyntheticEmbeddingProvider(),
+    { name: 'ollama', model: local.model, generate },
+    { search: async () => [] },
+    local,
+  );
+  expect((await rag.run({ organizationId: org, question })).generation.pricing.source).toBe(
+    'operator_configured',
+  );
+  expect(generate).not.toHaveBeenCalled();
+});

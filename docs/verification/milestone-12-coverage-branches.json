@@ -1,0 +1,2227 @@
+{
+  "scope": "Unchanged tests/jest.coverage.config.cjs collectCoverageFrom; critical services, not whole monorepo",
+  "baseline": {
+    "lines": {
+      "total": 4926,
+      "covered": 4863,
+      "skipped": 0,
+      "pct": 98.72
+    },
+    "statements": {
+      "total": 4926,
+      "covered": 4863,
+      "skipped": 0,
+      "pct": 98.72
+    },
+    "functions": {
+      "total": 249,
+      "covered": 242,
+      "skipped": 0,
+      "pct": 97.18
+    },
+    "branches": {
+      "total": 1317,
+      "covered": 1216,
+      "skipped": 0,
+      "pct": 92.33
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "updated": {
+    "lines": {
+      "total": 4926,
+      "covered": 4895,
+      "skipped": 0,
+      "pct": 99.37
+    },
+    "statements": {
+      "total": 4926,
+      "covered": 4895,
+      "skipped": 0,
+      "pct": 99.37
+    },
+    "functions": {
+      "total": 249,
+      "covered": 243,
+      "skipped": 0,
+      "pct": 97.59
+    },
+    "branches": {
+      "total": 1391,
+      "covered": 1361,
+      "skipped": 0,
+      "pct": 97.84
+    },
+    "branchesTrue": {
+      "total": 0,
+      "covered": 0,
+      "skipped": 0,
+      "pct": 100
+    }
+  },
+  "baselineUncovered": [
+    {
+      "file": "packages/ai/src/drafting/config.ts",
+      "branch": "25.0",
+      "type": "branch",
+      "start": {
+        "line": 63,
+        "column": 6
+      },
+      "end": {
+        "line": 63,
+        "column": 55
+      },
+      "hits": 0,
+      "risk": "Low — deterministic/configuration fallback",
+      "source": "throw new Error('Ollama model must be explicit');"
+    },
+    {
+      "file": "packages/ai/src/drafting/evidence.ts",
+      "branch": "1.0",
+      "type": "branch",
+      "start": {
+        "line": 20,
+        "column": 60
+      },
+      "end": {
+        "line": 20,
+        "column": 66
+      },
+      "hits": 0,
+      "risk": "High — retrieval/citations",
+      "source": "const words = (text.toLowerCase().match(/[\\p{L}\\p{N}]+/gu) ?? [])"
+    },
+    {
+      "file": "packages/ai/src/drafting/pipeline.ts",
+      "branch": "47.0",
+      "type": "branch",
+      "start": {
+        "line": 265,
+        "column": 8
+      },
+      "end": {
+        "line": 265,
+        "column": 19
+      },
+      "hits": 0,
+      "risk": "High — retrieval/citations",
+      "source": ": undefined;"
+    },
+    {
+      "file": "packages/ai/src/drafting/pipeline.ts",
+      "branch": "57.0",
+      "type": "branch",
+      "start": {
+        "line": 272,
+        "column": 8
+      },
+      "end": {
+        "line": 272,
+        "column": 79
+      },
+      "hits": 0,
+      "risk": "High — retrieval/citations",
+      "source": "throw new DraftingFailure('RAG_CONTEXT_FAILED', position.stage, false);"
+    },
+    {
+      "file": "packages/ai/src/drafting/pipeline.ts",
+      "branch": "59.0",
+      "type": "branch",
+      "start": {
+        "line": 274,
+        "column": 5
+      },
+      "end": {
+        "line": 274,
+        "column": 15
+      },
+      "hits": 0,
+      "risk": "High — retrieval/citations",
+      "source": "} finally {",
+      "assessment": "V8 reports the finally boundary as a separate empty range. Success, invalid citations, retrieval/context/generation failure, timeout and cancellation tests execute cleanup; retained as an instrumentation gap, not excluded."
+    },
+    {
+      "file": "packages/ai/src/drafting/pipeline.ts",
+      "branch": "70.0",
+      "type": "branch",
+      "start": {
+        "line": 122,
+        "column": 16
+      },
+      "end": {
+        "line": 122,
+        "column": 39
+      },
+      "hits": 0,
+      "risk": "High — retrieval/citations",
+      "source": ": 'operator_configured',"
+    },
+    {
+      "file": "packages/ai/src/drafting/provider.ts",
+      "branch": "9.0",
+      "type": "branch",
+      "start": {
+        "line": 38,
+        "column": 44
+      },
+      "end": {
+        "line": 38,
+        "column": 90
+      },
+      "hits": 0,
+      "risk": "Low — deterministic/configuration fallback",
+      "source": "options.sort((a, b) => b.score - a.score || a.row.chunkId.localeCompare(b.row.chunkId));"
+    },
+    {
+      "file": "packages/ai/src/gemini/config.ts",
+      "branch": "8.0",
+      "type": "branch",
+      "start": {
+        "line": 52,
+        "column": 10
+      },
+      "end": {
+        "line": 52,
+        "column": 50
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ": Number(env.GEMINI_REQUESTS_PER_MINUTE),"
+    },
+    {
+      "file": "packages/ai/src/gemini/config.ts",
+      "branch": "12.0",
+      "type": "branch",
+      "start": {
+        "line": 56,
+        "column": 57
+      },
+      "end": {
+        "line": 56,
+        "column": 89
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "env.GEMINI_CONCURRENCY === undefined ? undefined : Number(env.GEMINI_CONCURRENCY),"
+    },
+    {
+      "file": "packages/ai/src/gemini/discovery.ts",
+      "branch": "14.0",
+      "type": "branch",
+      "start": {
+        "line": 47,
+        "column": 12
+      },
+      "end": {
+        "line": 47,
+        "column": 62
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "throw new GeminiFailure('GEMINI_DISCOVERY_LIMIT');"
+    },
+    {
+      "file": "packages/ai/src/gemini/discovery.ts",
+      "branch": "17.0",
+      "type": "branch",
+      "start": {
+        "line": 54,
+        "column": 23
+      },
+      "end": {
+        "line": 54,
+        "column": 79
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "if (!reader) throw new GeminiFailure('GEMINI_DISCOVERY_UNAVAILABLE');"
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "26.0",
+      "type": "branch",
+      "start": {
+        "line": 160,
+        "column": 53
+      },
+      "end": {
+        "line": 160,
+        "column": 59
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "(result.usageMetadata?.candidatesTokenCount ?? -1) +"
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "32.0",
+      "type": "branch",
+      "start": {
+        "line": 166,
+        "column": 35
+      },
+      "end": {
+        "line": 166,
+        "column": 41
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "const text = (result.text ?? '').trim();"
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "42.0",
+      "type": "branch",
+      "start": {
+        "line": 184,
+        "column": 16
+      },
+      "end": {
+        "line": 184,
+        "column": 34
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "? 'GEMINI_TIMEOUT'",
+      "assessment": "Generic-error + aborted-signal fallback is not separately reached: the bounded abort race normally produces a typed GeminiFailure first. Both cooperative and uncooperative timeout tests assert failure/lease release. No fake SDK internals added to force race ordering."
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "43.0",
+      "type": "branch",
+      "start": {
+        "line": 186,
+        "column": 18
+      },
+      "end": {
+        "line": 186,
+        "column": 44
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "? 'GEMINI_INVALID_REQUEST'"
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "44.0",
+      "type": "branch",
+      "start": {
+        "line": 189,
+        "column": 20
+      },
+      "end": {
+        "line": 193,
+        "column": 46
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ": status === 404                       ? 'GEMINI_MODEL_UNAVAILABLE'                       : status === 429"
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "47.0",
+      "type": "branch",
+      "start": {
+        "line": 201,
+        "column": 5
+      },
+      "end": {
+        "line": 201,
+        "column": 15
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "} finally {",
+      "assessment": "V8 finally-boundary range. Tests explicitly assert lease release on success, HTTP failures, timeouts, malformed body and persistence checkpoint failure. Still reported, not removed from denominator."
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "50.0",
+      "type": "branch",
+      "start": {
+        "line": 78,
+        "column": 14
+      },
+      "end": {
+        "line": 78,
+        "column": 65
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "throw new GeminiFailure('GEMINI_ENDPOINT_BLOCKED');",
+      "assessment": "SDK endpoint allowlist denial is defensive: the official SDK is given a constant origin, API version, model and POST method. Reaching denial requires replacing/mutating SDK internals. Tests inspect the actual SDK-generated URL/method and forbid paid features; guard retained."
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "64.0",
+      "type": "branch",
+      "start": {
+        "line": 99,
+        "column": 25
+      },
+      "end": {
+        "line": 99,
+        "column": 76
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "if (!reader) throw new GeminiFailure('GEMINI_INVALID_RESPONSE');"
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "76.0",
+      "type": "branch",
+      "start": {
+        "line": 137,
+        "column": 28
+      },
+      "end": {
+        "line": 137,
+        "column": 36
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "if (signal.aborted) abort();"
+    },
+    {
+      "file": "packages/db/src/drafting.ts",
+      "branch": "7.0",
+      "type": "branch",
+      "start": {
+        "line": 69,
+        "column": 6
+      },
+      "end": {
+        "line": 73,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} catch (error) {       client.removeListener('error', onError);       client.release(true);"
+    },
+    {
+      "file": "packages/db/src/drafting.ts",
+      "branch": "25.0",
+      "type": "branch",
+      "start": {
+        "line": 143,
+        "column": 17
+      },
+      "end": {
+        "line": 143,
+        "column": 54
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!result) throw new Error('Usage unavailable');",
+      "assessment": "PostgreSQL aggregate without GROUP BY always returns one row, including an empty attempt set. DB exceptions are tested. Returning zero rows would require replacing database semantics or the query."
+    },
+    {
+      "file": "packages/db/src/drafting.ts",
+      "branch": "43.0",
+      "type": "branch",
+      "start": {
+        "line": 240,
+        "column": 15
+      },
+      "end": {
+        "line": 240,
+        "column": 23
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "stage ?? null,"
+    },
+    {
+      "file": "packages/db/src/drafting.ts",
+      "branch": "48.0",
+      "type": "branch",
+      "start": {
+        "line": 271,
+        "column": 6
+      },
+      "end": {
+        "line": 273,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} catch {       discard = true;     }"
+    },
+    {
+      "file": "packages/db/src/ingestion.ts",
+      "branch": "10.0",
+      "type": "branch",
+      "start": {
+        "line": 94,
+        "column": 6
+      },
+      "end": {
+        "line": 98,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} catch (error) {       client.removeListener('error', connectionError);       client.release(true);"
+    },
+    {
+      "file": "packages/db/src/ingestion.ts",
+      "branch": "17.0",
+      "type": "branch",
+      "start": {
+        "line": 125,
+        "column": 8
+      },
+      "end": {
+        "line": 125,
+        "column": 31
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "return 'skip' as const;"
+    },
+    {
+      "file": "packages/db/src/ingestion.ts",
+      "branch": "25.0",
+      "type": "branch",
+      "start": {
+        "line": 163,
+        "column": 23
+      },
+      "end": {
+        "line": 163,
+        "column": 40
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!rows.rows[0]) return undefined;"
+    },
+    {
+      "file": "packages/db/src/ingestion.ts",
+      "branch": "63.0",
+      "type": "branch",
+      "start": {
+        "line": 264,
+        "column": 8
+      },
+      "end": {
+        "line": 264,
+        "column": 21
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "return false;"
+    },
+    {
+      "file": "packages/db/src/ingestion.ts",
+      "branch": "85.0",
+      "type": "branch",
+      "start": {
+        "line": 352,
+        "column": 6
+      },
+      "end": {
+        "line": 354,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} catch {       discard = true;     }"
+    },
+    {
+      "file": "packages/db/src/knowledge.ts",
+      "branch": "5.0",
+      "type": "branch",
+      "start": {
+        "line": 82,
+        "column": 76
+      },
+      "end": {
+        "line": 82,
+        "column": 82
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "const words = [...new Set((question.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []).slice(0, 64))];"
+    },
+    {
+      "file": "packages/db/src/knowledge.ts",
+      "branch": "18.0",
+      "type": "branch",
+      "start": {
+        "line": 155,
+        "column": 64
+      },
+      "end": {
+        "line": 155,
+        "column": 97
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!previous || previous.revision >= version.revision) throw new StoreConflict('state');"
+    },
+    {
+      "file": "packages/db/src/knowledge.ts",
+      "branch": "25.0",
+      "type": "branch",
+      "start": {
+        "line": 226,
+        "column": 21
+      },
+      "end": {
+        "line": 226,
+        "column": 58
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!document) throw new StoreConflict('not_found');"
+    },
+    {
+      "file": "packages/db/src/knowledge.ts",
+      "branch": "26.0",
+      "type": "branch",
+      "start": {
+        "line": 238,
+        "column": 20
+      },
+      "end": {
+        "line": 238,
+        "column": 57
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!version) throw new StoreConflict('not_found');"
+    },
+    {
+      "file": "packages/db/src/knowledge.ts",
+      "branch": "27.0",
+      "type": "branch",
+      "start": {
+        "line": 239,
+        "column": 29
+      },
+      "end": {
+        "line": 239,
+        "column": 36
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (version.deletedAt) return;"
+    },
+    {
+      "file": "packages/db/src/knowledge.ts",
+      "branch": "29.0",
+      "type": "branch",
+      "start": {
+        "line": 271,
+        "column": 54
+      },
+      "end": {
+        "line": 271,
+        "column": 91
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (actor.organizationId !== this.organizationId) throw new StoreConflict('not_found');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "14.0",
+      "type": "branch",
+      "start": {
+        "line": 112,
+        "column": 19
+      },
+      "end": {
+        "line": 112,
+        "column": 65
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!record) throw new Error('Missing idempotency record');",
+      "assessment": "The idempotency row is inserted then locked/read in the same transaction; the unique constraint serializes competing writers. A missing row requires privileged trigger/corruption outside supported behavior. Existing tests cover concurrent reuse, conflicts and rollback."
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "23.0",
+      "type": "branch",
+      "start": {
+        "line": 131,
+        "column": 5
+      },
+      "end": {
+        "line": 131,
+        "column": 15
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} finally {",
+      "assessment": "V8 finally-boundary range, with successful, conflicting and rolled-back mutations tested against real PostgreSQL. Connection release is exercised, not excluded."
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "35.0",
+      "type": "branch",
+      "start": {
+        "line": 172,
+        "column": 20
+      },
+      "end": {
+        "line": 172,
+        "column": 28
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "filter.query ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "50.0",
+      "type": "branch",
+      "start": {
+        "line": 254,
+        "column": 31
+      },
+      "end": {
+        "line": 254,
+        "column": 64
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (result.rowCount !== 1) throw new StoreConflict('state');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "62.0",
+      "type": "branch",
+      "start": {
+        "line": 312,
+        "column": 17
+      },
+      "end": {
+        "line": 312,
+        "column": 28
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.createdAt ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "63.0",
+      "type": "branch",
+      "start": {
+        "line": 313,
+        "column": 17
+      },
+      "end": {
+        "line": 313,
+        "column": 21
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.id ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "66.0",
+      "type": "branch",
+      "start": {
+        "line": 329,
+        "column": 17
+      },
+      "end": {
+        "line": 329,
+        "column": 28
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.createdAt ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "67.0",
+      "type": "branch",
+      "start": {
+        "line": 330,
+        "column": 17
+      },
+      "end": {
+        "line": 330,
+        "column": 21
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.id ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "77.0",
+      "type": "branch",
+      "start": {
+        "line": 387,
+        "column": 31
+      },
+      "end": {
+        "line": 387,
+        "column": 39
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if ((pending.rows[0]?.count ?? 1000) >= 1000) throw new StoreConflict('capacity');",
+      "assessment": "ingestion_pending_count() is an aggregate function returning one numeric row. Missing-row fallback is defensive; real 1,000-item saturation and concurrent admission tests cover capacity denial."
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "91.0",
+      "type": "branch",
+      "start": {
+        "line": 481,
+        "column": 14
+      },
+      "end": {
+        "line": 481,
+        "column": 51
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!job) throw new StoreConflict('not_found');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "92.0",
+      "type": "branch",
+      "start": {
+        "line": 482,
+        "column": 33
+      },
+      "end": {
+        "line": 482,
+        "column": 66
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (job.status !== 'failed') throw new StoreConflict('state');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "97.0",
+      "type": "branch",
+      "start": {
+        "line": 493,
+        "column": 27
+      },
+      "end": {
+        "line": 493,
+        "column": 60
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (denied.rowCount) throw new StoreConflict('state');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "100.0",
+      "type": "branch",
+      "start": {
+        "line": 500,
+        "column": 29
+      },
+      "end": {
+        "line": 500,
+        "column": 62
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!failure.rowCount) throw new StoreConflict('state');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "101.0",
+      "type": "branch",
+      "start": {
+        "line": 509,
+        "column": 29
+      },
+      "end": {
+        "line": 509,
+        "column": 62
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!version.rowCount) throw new StoreConflict('state');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "104.0",
+      "type": "branch",
+      "start": {
+        "line": 529,
+        "column": 54
+      },
+      "end": {
+        "line": 529,
+        "column": 96
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (actor.organizationId !== this.organizationId) throw new Error('Audit context mismatch');"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "106.0",
+      "type": "branch",
+      "start": {
+        "line": 554,
+        "column": 17
+      },
+      "end": {
+        "line": 554,
+        "column": 28
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.createdAt ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "107.0",
+      "type": "branch",
+      "start": {
+        "line": 555,
+        "column": 17
+      },
+      "end": {
+        "line": 555,
+        "column": 21
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.id ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "110.0",
+      "type": "branch",
+      "start": {
+        "line": 576,
+        "column": 17
+      },
+      "end": {
+        "line": 576,
+        "column": 28
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.createdAt ?? null,"
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "111.0",
+      "type": "branch",
+      "start": {
+        "line": 577,
+        "column": 17
+      },
+      "end": {
+        "line": 577,
+        "column": 21
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "page.last?.id ?? null,"
+    },
+    {
+      "file": "packages/db/src/tenant.ts",
+      "branch": "4.0",
+      "type": "branch",
+      "start": {
+        "line": 23,
+        "column": 3
+      },
+      "end": {
+        "line": 23,
+        "column": 13
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} finally {",
+      "assessment": "V8 finally-boundary range. RLS context/no-context and pooled context cleanup/rollback tests run against PostgreSQL; no exclusion added."
+    },
+    {
+      "file": "services/api/src/application/ai-status.service.ts",
+      "branch": "3.0",
+      "type": "branch",
+      "start": {
+        "line": 28,
+        "column": 10
+      },
+      "end": {
+        "line": 30,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ": this.env.DRAFT_PROVIDER === 'mock'             ? 'resolvehub-extractive-mock-v1'             : 'operator-configured',",
+      "assessment": "Reachable non-Gemini fallback identity (mock/Ollama) not separately exercised here. Synthetic runtime and Gemini heartbeat behavior are covered; local-provider fallback display remains a low-risk gap."
+    },
+    {
+      "file": "services/api/src/application/ai-status.service.ts",
+      "branch": "9.0",
+      "type": "branch",
+      "start": {
+        "line": 45,
+        "column": 8
+      },
+      "end": {
+        "line": 45,
+        "column": 27
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "return unavailable;"
+    },
+    {
+      "file": "services/api/src/application/ai-status.service.ts",
+      "branch": "18.0",
+      "type": "branch",
+      "start": {
+        "line": 70,
+        "column": 36
+      },
+      "end": {
+        "line": 70,
+        "column": 42
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "].includes(status.reasonCode ?? '')"
+    },
+    {
+      "file": "services/api/src/application/ai-status.service.ts",
+      "branch": "19.0",
+      "type": "branch",
+      "start": {
+        "line": 72,
+        "column": 10
+      },
+      "end": {
+        "line": 72,
+        "column": 15
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ": 503,"
+    },
+    {
+      "file": "services/api/src/application/ai-status.service.ts",
+      "branch": "20.0",
+      "type": "branch",
+      "start": {
+        "line": 73,
+        "column": 25
+      },
+      "end": {
+        "line": 73,
+        "column": 49
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "status.reasonCode ?? 'GEMINI_UNAVAILABLE',"
+    },
+    {
+      "file": "services/api/src/application/ai-status.service.ts",
+      "branch": "21.0",
+      "type": "branch",
+      "start": {
+        "line": 75,
+        "column": 83
+      },
+      "end": {
+        "line": 75,
+        "column": 94
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "status.retryAfterSeconds ? { retryAfterSeconds: status.retryAfterSeconds } : undefined,"
+    },
+    {
+      "file": "services/api/src/application/support.service.ts",
+      "branch": "7.0",
+      "type": "branch",
+      "start": {
+        "line": 69,
+        "column": 8
+      },
+      "end": {
+        "line": 69,
+        "column": 88
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "throw new ApiFault(500, 'INTERNAL_ERROR', 'Stored data violated its contract.');"
+    },
+    {
+      "file": "services/api/src/application/support.service.ts",
+      "branch": "90.0",
+      "type": "branch",
+      "start": {
+        "line": 339,
+        "column": 70
+      },
+      "end": {
+        "line": 339,
+        "column": 83
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "status: z.enum(['pending', 'approved', 'rejected']).parse(status ?? 'pending'),",
+      "assessment": "Public-service optional status default is reachable directly, but the GraphQL SDL supplies pending before resolver invocation. Current dashboard/API review behavior is covered; direct-call default remains a low-risk gap."
+    },
+    {
+      "file": "services/api/src/application/support.service.ts",
+      "branch": "123.0",
+      "type": "branch",
+      "start": {
+        "line": 468,
+        "column": 44
+      },
+      "end": {
+        "line": 468,
+        "column": 50
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "const parsed = filterSchema.parse(filter ?? {});"
+    },
+    {
+      "file": "services/api/src/application/support.service.ts",
+      "branch": "124.0",
+      "type": "branch",
+      "start": {
+        "line": 470,
+        "column": 24
+      },
+      "end": {
+        "line": 470,
+        "column": 51
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "...(parsed.status ? { status: parsed.status } : {}),"
+    },
+    {
+      "file": "services/api/src/application/support.service.ts",
+      "branch": "125.0",
+      "type": "branch",
+      "start": {
+        "line": 471,
+        "column": 49
+      },
+      "end": {
+        "line": 471,
+        "column": 53
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "...(parsed.query ? { query: parsed.query } : {}),"
+    },
+    {
+      "file": "services/api/src/application/validator.ts",
+      "branch": "6.0",
+      "type": "branch",
+      "start": {
+        "line": 40,
+        "column": 32
+      },
+      "end": {
+        "line": 40,
+        "column": 38
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "fields: (validate.errors ?? [])",
+      "assessment": "AJV populates errors when synchronous validation returns false. Null-error fallback requires a substituted/malformed validator implementation; request validation and response rejection already tested."
+    },
+    {
+      "file": "services/api/src/auth/crypto.ts",
+      "branch": "11.0",
+      "type": "branch",
+      "start": {
+        "line": 18,
+        "column": 46
+      },
+      "end": {
+        "line": 18,
+        "column": 56
+      },
+      "hits": 0,
+      "risk": "High — authorization/secrets",
+      "source": "tokenDigest(JSON.stringify(canonical(value)) ?? 'null');"
+    },
+    {
+      "file": "services/api/src/auth/crypto.ts",
+      "branch": "16.0",
+      "type": "branch",
+      "start": {
+        "line": 43,
+        "column": 4
+      },
+      "end": {
+        "line": 43,
+        "column": 44
+      },
+      "hits": 0,
+      "risk": "High — authorization/secrets",
+      "source": "throw new Error('Invalid sealed value');"
+    },
+    {
+      "file": "services/api/src/auth/webhook-auth.service.ts",
+      "branch": "5.0",
+      "type": "branch",
+      "start": {
+        "line": 44,
+        "column": 6
+      },
+      "end": {
+        "line": 46,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "High — authorization/secrets",
+      "source": "} catch {       throw unavailable();     }"
+    },
+    {
+      "file": "services/api/src/auth/webhook-auth.service.ts",
+      "branch": "9.0",
+      "type": "branch",
+      "start": {
+        "line": 56,
+        "column": 6
+      },
+      "end": {
+        "line": 58,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "High — authorization/secrets",
+      "source": "} catch {       throw unavailable();     }"
+    },
+    {
+      "file": "services/worker/src/drafting/gemini-budget.ts",
+      "branch": "4.0",
+      "type": "branch",
+      "start": {
+        "line": 42,
+        "column": 21
+      },
+      "end": {
+        "line": 42,
+        "column": 58
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "if (eligibility) throw new GeminiFailure(eligibility);"
+    },
+    {
+      "file": "services/worker/src/drafting/gemini-budget.ts",
+      "branch": "37.0",
+      "type": "branch",
+      "start": {
+        "line": 149,
+        "column": 16
+      },
+      "end": {
+        "line": 149,
+        "column": 22
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ".exec()) ?? [];",
+      "assessment": "Redis EXEC can return null after a watched-key conflict; this implementation never WATCHes. No WATCH means normal EXEC returns results or throws. Real WRONGTYPE results and disconnection fail closed in tests."
+    },
+    {
+      "file": "services/worker/src/drafting/gemini-budget.ts",
+      "branch": "45.0",
+      "type": "branch",
+      "start": {
+        "line": 167,
+        "column": 12
+      },
+      "end": {
+        "line": 167,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "? 'GEMINI_MINUTE_LIMIT'"
+    },
+    {
+      "file": "services/worker/src/drafting/gemini-budget.ts",
+      "branch": "72.0",
+      "type": "branch",
+      "start": {
+        "line": 151,
+        "column": 32
+      },
+      "end": {
+        "line": 151,
+        "column": 79
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "if (!result || result[0]) throw new Error('Provider status unavailable');"
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "27.0",
+      "type": "branch",
+      "start": {
+        "line": 146,
+        "column": 69
+      },
+      "end": {
+        "line": 146,
+        "column": 92
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "stage === 'persistence' ? 'DRAFT_PERSISTENCE_FAILED' : 'DRAFT_WORKER_FAILED',"
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "38.0",
+      "type": "branch",
+      "start": {
+        "line": 52,
+        "column": 8
+      },
+      "end": {
+        "line": 54,
+        "column": 7
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "} catch {         throw new DraftingFailure('DRAFT_PERSISTENCE_FAILED', 'persistence');       }"
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "40.0",
+      "type": "branch",
+      "start": {
+        "line": 61,
+        "column": 49
+      },
+      "end": {
+        "line": 61,
+        "column": 62
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "const activeTraceId = trace.getActiveSpan()?.spanContext().traceId ?? '';",
+      "assessment": "Active-span optional fallback remains an operational diagnostics gap; stored trace correlation, sanitized diagnostics and logger failure are tested. No tenant/customer data is introduced to labels."
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "42.0",
+      "type": "branch",
+      "start": {
+        "line": 63,
+        "column": 48
+      },
+      "end": {
+        "line": 63,
+        "column": 54
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "? (session.job.traceparent.split('-')[1] ?? '')",
+      "assessment": "validTraceparent() already guarantees a trace ID segment, so split()[1] cannot be undefined on this branch. Forging the validator would mock the behavior being verified."
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "44.0",
+      "type": "branch",
+      "start": {
+        "line": 66,
+        "column": 44
+      },
+      "end": {
+        "line": 66,
+        "column": 75
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "/^[a-f0-9]{32}$/.test(activeTraceId) && !/^0+$/.test(activeTraceId)",
+      "assessment": "Alternate active-trace validity path remains an operational diagnostics gap. Existing trace propagation/privacy suites and stored correlation run; no claim of complete trace-branch coverage."
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "45.0",
+      "type": "branch",
+      "start": {
+        "line": 67,
+        "column": 10
+      },
+      "end": {
+        "line": 67,
+        "column": 25
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "? activeTraceId",
+      "assessment": "Choosing active trace over stored trace is reachable but not separately forced in the worker suite. Stored trace fallback is tested. Lower risk than authorization/publication/retry behavior; retained follow-up."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "4.0",
+      "type": "branch",
+      "start": {
+        "line": 56,
+        "column": 8
+      },
+      "end": {
+        "line": 56,
+        "column": 41
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": ": new OllamaDraftProvider(config);",
+      "assessment": "Existing local Ollama runtime selection is outside the active Gemini/synthetic deployment. Adapter has offline tests; no local server or paid service is started to increase coverage."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "15.0",
+      "type": "branch",
+      "start": {
+        "line": 111,
+        "column": 28
+      },
+      "end": {
+        "line": 111,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (stopped || pending) return;",
+      "assessment": "Overlapping/stopped scheduler tick is reachable under timing/load. Runtime readiness/shutdown and dispatch are tested; this exact short-circuit remains a lifecycle follow-up."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "19.0",
+      "type": "branch",
+      "start": {
+        "line": 118,
+        "column": 61
+      },
+      "end": {
+        "line": 118,
+        "column": 76
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "mode: config.provider === 'mock' ? 'synthetic' : 'unavailable',",
+      "assessment": "Existing Ollama heartbeat unavailable branch not exercised at runtime; no automatic provider switching enabled. Offline adapter tests remain."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "20.0",
+      "type": "branch",
+      "start": {
+        "line": 128,
+        "column": 18
+      },
+      "end": {
+        "line": 128,
+        "column": 87
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": ": 'Local Ollama is configured; cloud provider status is unavailable.',",
+      "assessment": "Existing Ollama-only status message; same deferred runtime branch, not active Gemini policy."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "24.0",
+      "type": "branch",
+      "start": {
+        "line": 147,
+        "column": 20
+      },
+      "end": {
+        "line": 147,
+        "column": 83
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (existing && ['completed', 'failed'].includes(await existing.getState()))",
+      "assessment": "Removal of a retained completed/failed Redis job before redispatch is reachable and remains a medium-risk recovery follow-up. Current suite tests duplicate publication, durable interrupted claims, four retries and DLQ replay; this distinct cleanup path is not claimed covered."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "25.0",
+      "type": "branch",
+      "start": {
+        "line": 148,
+        "column": 10
+      },
+      "end": {
+        "line": 148,
+        "column": 34
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "await existing.remove();",
+      "assessment": "Same retained Redis terminal-job cleanup path; reachable, deferred, not classified unreachable."
+    },
+    {
+      "file": "services/worker/src/ingestion/extract.ts",
+      "branch": "12.0",
+      "type": "branch",
+      "start": {
+        "line": 34,
+        "column": 4
+      },
+      "end": {
+        "line": 34,
+        "column": 53
+      },
+      "hits": 0,
+      "risk": "Medium — untrusted documents",
+      "source": "throw new IngestionFailure('INVALID_TYPE', true);"
+    },
+    {
+      "file": "services/worker/src/ingestion/extract.ts",
+      "branch": "23.0",
+      "type": "branch",
+      "start": {
+        "line": 58,
+        "column": 27
+      },
+      "end": {
+        "line": 58,
+        "column": 79
+      },
+      "hits": 0,
+      "risk": "Medium — untrusted documents",
+      "source": "if (chunks.length > 256) throw new IngestionFailure('INVALID_CONTENT', true);",
+      "assessment": "normalizeText caps text at 200,000 characters; 1,000-character chunks advancing 900 produce at most 223 chunks. The >256 guard is unreachable with current constants. Length limits and actual chunk overlap are tested."
+    },
+    {
+      "file": "services/worker/src/ingestion/extract.ts",
+      "branch": "27.0",
+      "type": "branch",
+      "start": {
+        "line": 64,
+        "column": 26
+      },
+      "end": {
+        "line": 67,
+        "column": 7
+      },
+      "hits": 0,
+      "risk": "Medium — untrusted documents",
+      "source": "if (signal.aborted) {         reject(new IngestionFailure('EXTRACTION_TIMEOUT'));         return;"
+    },
+    {
+      "file": "services/worker/src/ingestion/extract.ts",
+      "branch": "29.0",
+      "type": "branch",
+      "start": {
+        "line": 80,
+        "column": -1
+      },
+      "end": {
+        "line": 80,
+        "column": 67
+      },
+      "hits": 0,
+      "risk": "Medium — untrusted documents",
+      "source": "else reject(new IngestionFailure('INVALID_CONTENT', true));",
+      "assessment": "V8 maps this else range to column -1. A real corrupt PDF with valid signature returns permanent INVALID_CONTENT through the thread adapter; the negative-column range remains a reporting limitation, not excluded."
+    },
+    {
+      "file": "services/worker/src/ingestion/limiter.ts",
+      "branch": "9.0",
+      "type": "branch",
+      "start": {
+        "line": 22,
+        "column": 36
+      },
+      "end": {
+        "line": 22,
+        "column": 84
+      },
+      "hits": 0,
+      "risk": "High — bounded admission",
+      "source": "if (typeof wait !== 'number') throw new IngestionFailure('REDIS_UNAVAILABLE');",
+      "assessment": "The fixed Redis Lua script returns numeric PTTL or literal zero; nonnumeric output would require replacing the script/Redis implementation. Real downtime, shared limits and cancellation tests cover operational failures."
+    },
+    {
+      "file": "services/worker/src/ingestion/limiter.ts",
+      "branch": "13.0",
+      "type": "branch",
+      "start": {
+        "line": 26,
+        "column": -1
+      },
+      "end": {
+        "line": 27,
+        "column": 3
+      },
+      "hits": 0,
+      "risk": "High — bounded admission",
+      "source": "throw new IngestionFailure('WORKER_INTERRUPTED');   }"
+    },
+    {
+      "file": "services/worker/src/ingestion/pdf-parser.ts",
+      "branch": "0.0",
+      "type": "branch",
+      "start": {
+        "line": 1,
+        "column": 0
+      },
+      "end": {
+        "line": 28,
+        "column": 75
+      },
+      "hits": 0,
+      "risk": "Medium — untrusted documents",
+      "source": "import { parentPort, workerData } from 'node:worker_threads'; import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';",
+      "assessment": "The real parser executes in a Node worker thread, outside Jest V8 coverage collection. Valid PDF indexing and corrupt-PDF rejection execute it. This entire file remains included at zero rather than falsely claiming coverage; page/text/resource cap internals are not separately measured."
+    },
+    {
+      "file": "services/worker/src/ingestion/processor.ts",
+      "branch": "10.0",
+      "type": "branch",
+      "start": {
+        "line": 46,
+        "column": 38
+      },
+      "end": {
+        "line": 46,
+        "column": 45
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "if (dependencies.signal?.aborted) stop();"
+    },
+    {
+      "file": "services/worker/src/ingestion/processor.ts",
+      "branch": "15.0",
+      "type": "branch",
+      "start": {
+        "line": 52,
+        "column": 28
+      },
+      "end": {
+        "line": 52,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "if (claim === 'skip') return;"
+    },
+    {
+      "file": "services/worker/src/ingestion/processor.ts",
+      "branch": "36.0",
+      "type": "branch",
+      "start": {
+        "line": 145,
+        "column": 37
+      },
+      "end": {
+        "line": 145,
+        "column": 86
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "if (controller.signal.aborted) throw new IngestionFailure('WORKER_INTERRUPTED');"
+    },
+    {
+      "file": "services/worker/src/ingestion/runtime.ts",
+      "branch": "1.0",
+      "type": "branch",
+      "start": {
+        "line": 20,
+        "column": 54
+      },
+      "end": {
+        "line": 20,
+        "column": 60
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": ") => (error instanceof RetryIngestion ? error.delayMs : 1000);",
+      "assessment": "Default BullMQ backoff for an unknown error is reachable and remains a low-risk gap. Actual RetryIngestion delays and provider Retry-After/exhaustion are tested."
+    },
+    {
+      "file": "services/worker/src/ingestion/runtime.ts",
+      "branch": "5.0",
+      "type": "branch",
+      "start": {
+        "line": 44,
+        "column": 18
+      },
+      "end": {
+        "line": 47,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (existing) {       const state = await existing.getState();       if (state === 'completed' || state === 'failed') await existing.remove();",
+      "assessment": "Retained Redis job cleanup is reachable but remains a medium-risk dispatch follow-up. New acknowledgement rollback/deduplication test exercises the existing waiting-job branch; terminal removal still needs separate coverage."
+    },
+    {
+      "file": "services/worker/src/ingestion/runtime.ts",
+      "branch": "7.0",
+      "type": "branch",
+      "start": {
+        "line": 74,
+        "column": 6
+      },
+      "end": {
+        "line": 77,
+        "column": 5
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "} catch (error) {       await client.query('ROLLBACK');       throw error;"
+    },
+    {
+      "file": "services/worker/src/ingestion/runtime.ts",
+      "branch": "16.0",
+      "type": "branch",
+      "start": {
+        "line": 152,
+        "column": 28
+      },
+      "end": {
+        "line": 152,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (stopped || pending) return;",
+      "assessment": "Scheduler overlapping/stopped tick remains a timing-dependent lifecycle gap. Startup, readiness and clean close are verified."
+    }
+  ],
+  "remainingUncovered": [
+    {
+      "file": "packages/ai/src/drafting/pipeline.ts",
+      "branch": "60.0",
+      "type": "branch",
+      "start": {
+        "line": 274,
+        "column": 5
+      },
+      "end": {
+        "line": 274,
+        "column": 15
+      },
+      "hits": 0,
+      "risk": "High — retrieval/citations",
+      "source": "} finally {",
+      "assessment": "V8 reports the finally boundary as a separate empty range. Success, invalid citations, retrieval/context/generation failure, timeout and cancellation tests execute cleanup; retained as an instrumentation gap, not excluded."
+    },
+    {
+      "file": "packages/ai/src/gemini/discovery.ts",
+      "branch": "11.0",
+      "type": "branch",
+      "start": {
+        "line": 101,
+        "column": 6
+      },
+      "end": {
+        "line": 101,
+        "column": 57
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ": new GeminiFailure('GEMINI_DISCOVERY_UNAVAILABLE');",
+      "assessment": "Generic network/SDK exception sanitization during read-only model discovery is reachable and remains a follow-up. HTTP failures, missing/oversized bodies, account eligibility and the strict three-page bound are tested. Generation transport failures are independently tested; this metadata-only fallback is not claimed unreachable."
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "42.0",
+      "type": "branch",
+      "start": {
+        "line": 184,
+        "column": 16
+      },
+      "end": {
+        "line": 184,
+        "column": 34
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "? 'GEMINI_TIMEOUT'",
+      "assessment": "Generic-error + aborted-signal fallback is not separately reached: the bounded abort race normally produces a typed GeminiFailure first. Both cooperative and uncooperative timeout tests assert failure/lease release. No fake SDK internals added to force race ordering."
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "55.0",
+      "type": "branch",
+      "start": {
+        "line": 201,
+        "column": 5
+      },
+      "end": {
+        "line": 201,
+        "column": 15
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "} finally {",
+      "assessment": "V8 finally-boundary range. Tests explicitly assert lease release on success, HTTP failures, timeouts, malformed body and persistence checkpoint failure. Still reported, not removed from denominator."
+    },
+    {
+      "file": "packages/ai/src/gemini/provider.ts",
+      "branch": "58.0",
+      "type": "branch",
+      "start": {
+        "line": 78,
+        "column": 14
+      },
+      "end": {
+        "line": 78,
+        "column": 65
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": "throw new GeminiFailure('GEMINI_ENDPOINT_BLOCKED');",
+      "assessment": "SDK endpoint allowlist denial is defensive: the official SDK is given a constant origin, API version, model and POST method. Reaching denial requires replacing/mutating SDK internals. Tests inspect the actual SDK-generated URL/method and forbid paid features; guard retained."
+    },
+    {
+      "file": "packages/db/src/drafting.ts",
+      "branch": "27.0",
+      "type": "branch",
+      "start": {
+        "line": 143,
+        "column": 17
+      },
+      "end": {
+        "line": 143,
+        "column": 54
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!result) throw new Error('Usage unavailable');",
+      "assessment": "PostgreSQL aggregate without GROUP BY always returns one row, including an empty attempt set. DB exceptions are tested. Returning zero rows would require replacing database semantics or the query."
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "14.0",
+      "type": "branch",
+      "start": {
+        "line": 112,
+        "column": 19
+      },
+      "end": {
+        "line": 112,
+        "column": 65
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if (!record) throw new Error('Missing idempotency record');",
+      "assessment": "The idempotency row is inserted then locked/read in the same transaction; the unique constraint serializes competing writers. A missing row requires privileged trigger/corruption outside supported behavior. Existing tests cover concurrent reuse, conflicts and rollback."
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "23.0",
+      "type": "branch",
+      "start": {
+        "line": 131,
+        "column": 5
+      },
+      "end": {
+        "line": 131,
+        "column": 15
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} finally {",
+      "assessment": "V8 finally-boundary range, with successful, conflicting and rolled-back mutations tested against real PostgreSQL. Connection release is exercised, not excluded."
+    },
+    {
+      "file": "packages/db/src/store.ts",
+      "branch": "83.0",
+      "type": "branch",
+      "start": {
+        "line": 387,
+        "column": 31
+      },
+      "end": {
+        "line": 387,
+        "column": 39
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "if ((pending.rows[0]?.count ?? 1000) >= 1000) throw new StoreConflict('capacity');",
+      "assessment": "ingestion_pending_count() is an aggregate function returning one numeric row. Missing-row fallback is defensive; real 1,000-item saturation and concurrent admission tests cover capacity denial."
+    },
+    {
+      "file": "packages/db/src/tenant.ts",
+      "branch": "4.0",
+      "type": "branch",
+      "start": {
+        "line": 23,
+        "column": 3
+      },
+      "end": {
+        "line": 23,
+        "column": 13
+      },
+      "hits": 0,
+      "risk": "High — tenant/data integrity",
+      "source": "} finally {",
+      "assessment": "V8 finally-boundary range. RLS context/no-context and pooled context cleanup/rollback tests run against PostgreSQL; no exclusion added."
+    },
+    {
+      "file": "services/api/src/application/ai-status.service.ts",
+      "branch": "3.0",
+      "type": "branch",
+      "start": {
+        "line": 28,
+        "column": 10
+      },
+      "end": {
+        "line": 30,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ": this.env.DRAFT_PROVIDER === 'mock'             ? 'resolvehub-extractive-mock-v1'             : 'operator-configured',",
+      "assessment": "Reachable non-Gemini fallback identity (mock/Ollama) not separately exercised here. Synthetic runtime and Gemini heartbeat behavior are covered; local-provider fallback display remains a low-risk gap."
+    },
+    {
+      "file": "services/api/src/application/support.service.ts",
+      "branch": "90.0",
+      "type": "branch",
+      "start": {
+        "line": 339,
+        "column": 70
+      },
+      "end": {
+        "line": 339,
+        "column": 83
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "status: z.enum(['pending', 'approved', 'rejected']).parse(status ?? 'pending'),",
+      "assessment": "Public-service optional status default is reachable directly, but the GraphQL SDL supplies pending before resolver invocation. Current dashboard/API review behavior is covered; direct-call default remains a low-risk gap."
+    },
+    {
+      "file": "services/api/src/application/validator.ts",
+      "branch": "6.0",
+      "type": "branch",
+      "start": {
+        "line": 40,
+        "column": 32
+      },
+      "end": {
+        "line": 40,
+        "column": 38
+      },
+      "hits": 0,
+      "risk": "Medium — transport/data validation",
+      "source": "fields: (validate.errors ?? [])",
+      "assessment": "AJV populates errors when synchronous validation returns false. Null-error fallback requires a substituted/malformed validator implementation; request validation and response rejection already tested."
+    },
+    {
+      "file": "services/worker/src/drafting/gemini-budget.ts",
+      "branch": "38.0",
+      "type": "branch",
+      "start": {
+        "line": 149,
+        "column": 16
+      },
+      "end": {
+        "line": 149,
+        "column": 22
+      },
+      "hits": 0,
+      "risk": "High — provider/free-tier admission",
+      "source": ".exec()) ?? [];",
+      "assessment": "Redis EXEC can return null after a watched-key conflict; this implementation never WATCHes. No WATCH means normal EXEC returns results or throws. Real WRONGTYPE results and disconnection fail closed in tests."
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "44.0",
+      "type": "branch",
+      "start": {
+        "line": 61,
+        "column": 49
+      },
+      "end": {
+        "line": 61,
+        "column": 62
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "const activeTraceId = trace.getActiveSpan()?.spanContext().traceId ?? '';",
+      "assessment": "Active-span optional fallback remains an operational diagnostics gap; stored trace correlation, sanitized diagnostics and logger failure are tested. No tenant/customer data is introduced to labels."
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "46.0",
+      "type": "branch",
+      "start": {
+        "line": 63,
+        "column": 48
+      },
+      "end": {
+        "line": 63,
+        "column": 54
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "? (session.job.traceparent.split('-')[1] ?? '')",
+      "assessment": "validTraceparent() already guarantees a trace ID segment, so split()[1] cannot be undefined on this branch. Forging the validator would mock the behavior being verified."
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "48.0",
+      "type": "branch",
+      "start": {
+        "line": 66,
+        "column": 44
+      },
+      "end": {
+        "line": 66,
+        "column": 75
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "/^[a-f0-9]{32}$/.test(activeTraceId) && !/^0+$/.test(activeTraceId)",
+      "assessment": "Alternate active-trace validity path remains an operational diagnostics gap. Existing trace propagation/privacy suites and stored correlation run; no claim of complete trace-branch coverage."
+    },
+    {
+      "file": "services/worker/src/drafting/processor.ts",
+      "branch": "49.0",
+      "type": "branch",
+      "start": {
+        "line": 67,
+        "column": 10
+      },
+      "end": {
+        "line": 67,
+        "column": 25
+      },
+      "hits": 0,
+      "risk": "High — worker failure/publication",
+      "source": "? activeTraceId",
+      "assessment": "Choosing active trace over stored trace is reachable but not separately forced in the worker suite. Stored trace fallback is tested. Lower risk than authorization/publication/retry behavior; retained follow-up."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "4.0",
+      "type": "branch",
+      "start": {
+        "line": 56,
+        "column": 8
+      },
+      "end": {
+        "line": 56,
+        "column": 41
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": ": new OllamaDraftProvider(config);",
+      "assessment": "Existing local Ollama runtime selection is outside the active Gemini/synthetic deployment. Adapter has offline tests; no local server or paid service is started to increase coverage."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "15.0",
+      "type": "branch",
+      "start": {
+        "line": 111,
+        "column": 28
+      },
+      "end": {
+        "line": 111,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (stopped || pending) return;",
+      "assessment": "Overlapping/stopped scheduler tick is reachable under timing/load. Runtime readiness/shutdown and dispatch are tested; this exact short-circuit remains a lifecycle follow-up."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "19.0",
+      "type": "branch",
+      "start": {
+        "line": 118,
+        "column": 61
+      },
+      "end": {
+        "line": 118,
+        "column": 76
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "mode: config.provider === 'mock' ? 'synthetic' : 'unavailable',",
+      "assessment": "Existing Ollama heartbeat unavailable branch not exercised at runtime; no automatic provider switching enabled. Offline adapter tests remain."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "20.0",
+      "type": "branch",
+      "start": {
+        "line": 128,
+        "column": 18
+      },
+      "end": {
+        "line": 128,
+        "column": 87
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": ": 'Local Ollama is configured; cloud provider status is unavailable.',",
+      "assessment": "Existing Ollama-only status message; same deferred runtime branch, not active Gemini policy."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "24.0",
+      "type": "branch",
+      "start": {
+        "line": 147,
+        "column": 20
+      },
+      "end": {
+        "line": 147,
+        "column": 83
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (existing && ['completed', 'failed'].includes(await existing.getState()))",
+      "assessment": "Removal of a retained completed/failed Redis job before redispatch is reachable and remains a medium-risk recovery follow-up. Current suite tests duplicate publication, durable interrupted claims, four retries and DLQ replay; this distinct cleanup path is not claimed covered."
+    },
+    {
+      "file": "services/worker/src/drafting/runtime.ts",
+      "branch": "25.0",
+      "type": "branch",
+      "start": {
+        "line": 148,
+        "column": 10
+      },
+      "end": {
+        "line": 148,
+        "column": 34
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "await existing.remove();",
+      "assessment": "Same retained Redis terminal-job cleanup path; reachable, deferred, not classified unreachable."
+    },
+    {
+      "file": "services/worker/src/ingestion/extract.ts",
+      "branch": "24.0",
+      "type": "branch",
+      "start": {
+        "line": 58,
+        "column": 27
+      },
+      "end": {
+        "line": 58,
+        "column": 79
+      },
+      "hits": 0,
+      "risk": "Medium — untrusted documents",
+      "source": "if (chunks.length > 256) throw new IngestionFailure('INVALID_CONTENT', true);",
+      "assessment": "normalizeText caps text at 200,000 characters; 1,000-character chunks advancing 900 produce at most 223 chunks. The >256 guard is unreachable with current constants. Length limits and actual chunk overlap are tested."
+    },
+    {
+      "file": "services/worker/src/ingestion/limiter.ts",
+      "branch": "8.0",
+      "type": "branch",
+      "start": {
+        "line": 22,
+        "column": 36
+      },
+      "end": {
+        "line": 22,
+        "column": 84
+      },
+      "hits": 0,
+      "risk": "High — bounded admission",
+      "source": "if (typeof wait !== 'number') throw new IngestionFailure('REDIS_UNAVAILABLE');",
+      "assessment": "The fixed Redis Lua script returns numeric PTTL or literal zero; nonnumeric output would require replacing the script/Redis implementation. Real downtime, shared limits and cancellation tests cover operational failures."
+    },
+    {
+      "file": "services/worker/src/ingestion/pdf-parser.ts",
+      "branch": "0.0",
+      "type": "branch",
+      "start": {
+        "line": 1,
+        "column": 0
+      },
+      "end": {
+        "line": 28,
+        "column": 75
+      },
+      "hits": 0,
+      "risk": "Medium — untrusted documents",
+      "source": "import { parentPort, workerData } from 'node:worker_threads'; import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs';",
+      "assessment": "The real parser executes in a Node worker thread, outside Jest V8 coverage collection. Valid PDF indexing and corrupt-PDF rejection execute it. This entire file remains included at zero rather than falsely claiming coverage; page/text/resource cap internals are not separately measured."
+    },
+    {
+      "file": "services/worker/src/ingestion/runtime.ts",
+      "branch": "1.0",
+      "type": "branch",
+      "start": {
+        "line": 20,
+        "column": 54
+      },
+      "end": {
+        "line": 20,
+        "column": 60
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": ") => (error instanceof RetryIngestion ? error.delayMs : 1000);",
+      "assessment": "Default BullMQ backoff for an unknown error is reachable and remains a low-risk gap. Actual RetryIngestion delays and provider Retry-After/exhaustion are tested."
+    },
+    {
+      "file": "services/worker/src/ingestion/runtime.ts",
+      "branch": "7.0",
+      "type": "branch",
+      "start": {
+        "line": 46,
+        "column": 55
+      },
+      "end": {
+        "line": 46,
+        "column": 79
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (state === 'completed' || state === 'failed') await existing.remove();",
+      "assessment": "Removal of a retained completed/failed Redis job before redispatch is reachable and remains a medium-risk recovery follow-up. New tests cover acknowledgement rollback and deduplicating an existing waiting job. Existing retry/exhaustion/DLQ suites do not substitute for testing this distinct terminal cleanup path."
+    },
+    {
+      "file": "services/worker/src/ingestion/runtime.ts",
+      "branch": "20.0",
+      "type": "branch",
+      "start": {
+        "line": 152,
+        "column": 28
+      },
+      "end": {
+        "line": 152,
+        "column": 35
+      },
+      "hits": 0,
+      "risk": "Medium — dispatch/lifecycle",
+      "source": "if (stopped || pending) return;",
+      "assessment": "Scheduler overlapping/stopped tick remains a timing-dependent lifecycle gap. Startup, readiness and clean close are verified."
+    }
+  ]
+}
